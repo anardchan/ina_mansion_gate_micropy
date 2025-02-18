@@ -17,121 +17,114 @@ OPEN_GATE_SWITCH = 10  # Pin that opens the gate and starts the system
 
 # Defines
 GATE_OPEN_TIME = 10  # Default time to keep the gate open
-SWING_ARM_DELAY = 1.5  # Delay before the other gate moves
+SWING_ARM_DELAY = 1.2  # Reduced delay before the other gate moves
 
-class SwingArmController:
-    def __init__(
-        self, motor_enable, motor_direction, open_sensor, close_sensor, delay=1.5
-    ):
+
+class Gate:
+    def __init__(self, motor_enable, motor_direction):
         self.motor_enable = Pin(motor_enable, Pin.OUT)
         self.motor_direction = Pin(motor_direction, Pin.OUT)
-        self.open_sensor = Pin(open_sensor, Pin.IN)
-        self.close_sensor = Pin(close_sensor, Pin.IN)
-        self.delay = delay  # Delay before the other gate moves
-
-    def is_open(self):
-        return self.open_sensor.value() == 1
-
-    def is_closed(self):
-        return self.close_sensor.value() == 1
 
     def open_gate(self):
-        if self.is_open() is not True:
-            self.motor_direction.value(1)  # Set direction to open
-            self.motor_enable.value(1)  # Start motor
+        self.motor_direction.value(1)
+        time.sleep(0.2)
+        self.motor_enable.value(1)
 
     def close_gate(self):
-        if not self.is_closed():
-            self.motor_direction.value(0)  # Set direction to close
-            self.motor_enable.value(1)  # Start motor
+        self.motor_direction.value(0)
+        time.sleep(0.2)
+        self.motor_enable.value(1)
 
     def stop_gate(self):
-        self.motor_direction.value(0)  # Just don't provide a signal to the relay
-        self.motor_enable.value(0)  # Stop motor
+        self.motor_direction.value(0)
+        time.sleep(0.2)
+        self.motor_enable.value(0)
 
 
-class GateSystem:
-    def __init__(self):
-        self.left_gate = SwingArmController(
-            K1_MOTOR_1, K2_MOTOR_1, LEFT_OPEN, LEFT_CLOSE
+def close_gates():
+    if pass_through_sensor.value():
+        time.sleep(0.2)  # Debounce delay
+        if pass_through_sensor.value():  # Confirm signal is still high
+            open_gates()
+            if close_gate_timer:
+                close_gate_timer.deinit()
+            close_gate_timer.init(
+                period=GATE_OPEN_TIME * 1000, mode=Timer.ONE_SHOT, callback=close_gates
+            )
+            return
+
+    if right_gate_close.value():
+        right_gate.stop_gate()
+    else:
+        right_gate.close_gate()
+        time.sleep(SWING_ARM_DELAY)
+
+    if left_gate_close.value():
+        left_gate.stop_gate()
+    else:
+        left_gate.close_gate()
+
+    if close_gate_timer:
+        close_gate_timer.deinit()
+
+
+def open_gates():
+    if left_gate_open.value():
+        left_gate.stop_gate()
+    else:
+        left_gate.open_gate()
+        time.sleep(SWING_ARM_DELAY)
+
+    if right_gate_open.value():
+        right_gate.stop_gate()
+    else:
+        right_gate.open_gate()
+
+
+def stop_gate_callback(pin):
+    if close_gate_timer:
+        close_gate_timer.deinit()
+    if left_gate_open.value() or right_gate_open.value():
+        close_gate_timer.init(
+            period=GATE_OPEN_TIME * 1000, mode=Timer.ONE_SHOT, callback=close_gates
         )
-        self.right_gate = SwingArmController(
-            K4_MOTOR_2, K3_MOTOR_2, RIGHT_OPEN, RIGHT_CLOSE
-        )
-        self.pass_through = Pin(PASS_THROUGH, Pin.IN)
-        self.open_gate_switch = Pin(
-            OPEN_GATE_SWITCH, Pin.IN, Pin.IRQ_FALLING, self.start_system
-        )
-        self.timer = Timer(-1)
-        self.gate_open_time = GATE_OPEN_TIME
-        self.gate_closing = False
-        self.check_gate_status_on_boot()
-
-    def check_gate_status_on_boot(self):
-        if (
-            self.left_gate.is_open() is not True
-            or self.right_gate.is_open() is not True
-        ):
-            self.close_gates()
-
-    def start_system(self, pin):
-        if self.gate_closing is not True:
-            self.open_gates()
-
-    def open_gates(self):
-        """
-        Blocking method that waits for gates to open and manages them accordingly.
-        """
-        self.left_gate.open_gate()
-        time.sleep(self.left_gate.delay)
-        self.right_gate.open_gate()
-        self.monitor_gates(self.left_gate, self.right_gate)
-        self.keep_gate_open()
-
-    def monitor_gates(self, gate1, gate2):
-        """
-        Blocking method that waits for the gates to be fully open or closed.
-        """
-        while gate1.is_open() is not True or gate1.is_closed() is not True:
-            time.sleep(0.1)
-        gate1.stop_gate()
-        while gate2.is_open() is not True or gate2.is_closed() is not True:
-            time.sleep(0.1)
-        gate2.stop_gate()
-
-    def keep_gate_open(self):
-        """
-        Blocking method that keeps the gate open for a specified time.
-        The specified time is reset when a vehicle passes through the gate.
-        """
-        start_time = time.time()
-        while time.time() - start_time < self.gate_open_time:
-            if self.pass_through.value() == 1:
-                start_time = time.time()
-            time.sleep(0.1)
-        self.close_gates()
-
-    def close_gates(self):
-        self.gate_closing = True
-        self.right_gate.close_gate()
-        time.sleep(self.right_gate.delay)
-        self.left_gate.close_gate()
-
-        while not (self.right_gate.is_closed() or self.left_gate.is_closed()):
-            if self.pass_through.value() == 1:  # Safety feature: reopen if interrupted
-                self.open_gates()
-                return
-            if (
-                self.open_gate_switch.value() == 1
-            ):  # Safety feature: reopen if interrupted
-                self.open_gates()
-                return
-            time.sleep(0.1)
-
-        self.monitor_gates(self.right_gate, self.left_gate)
-        self.gate_closing = False
+    if left_gate_close.value():
+        left_gate.stop_gate()
+    if right_gate_close.value():
+        right_gate.stop_gate()
 
 
-system = GateSystem()
-while True:
-    time.sleep(1)  # Keep the script running
+def pass_through_callback(pin):
+    if close_gate_timer:
+        close_gate_timer.deinit()
+    close_gate_timer.init(
+        period=GATE_OPEN_TIME * 1000, mode=Timer.ONE_SHOT, callback=close_gates
+    )
+    open_gates()
+
+
+def front_desk_button_callback(pin):
+    time.sleep(0.2)  # Debounce delay
+    if pin.value():
+        open_gates()
+
+
+left_gate = Gate(K1_MOTOR_1, K2_MOTOR_1)
+right_gate = Gate(K4_MOTOR_2, K3_MOTOR_2)
+
+front_desk_button = Pin(OPEN_GATE_SWITCH, Pin.IN)
+left_gate_open = Pin(LEFT_OPEN, Pin.IN)
+left_gate_close = Pin(LEFT_CLOSE, Pin.IN)
+right_gate_open = Pin(RIGHT_OPEN, Pin.IN)
+right_gate_close = Pin(RIGHT_CLOSE, Pin.IN)
+pass_through_sensor = Pin(PASS_THROUGH, Pin.IN)
+close_gate_timer = Timer(0)
+
+front_desk_button.irq(trigger=Pin.IRQ_RISING, handler=front_desk_button_callback)
+left_gate_open.irq(trigger=Pin.IRQ_RISING, handler=stop_gate_callback)
+right_gate_open.irq(trigger=Pin.IRQ_RISING, handler=stop_gate_callback)
+right_gate_close.irq(trigger=Pin.IRQ_RISING, handler=stop_gate_callback)
+left_gate_close.irq(trigger=Pin.IRQ_RISING, handler=stop_gate_callback)
+pass_through_sensor.irq(trigger=Pin.IRQ_RISING, handler=pass_through_callback)
+
+close_gates()
