@@ -15,18 +15,6 @@ START_PIN = 39  # Pin that starts the motor movement
 STOP_PIN = 34  # Pin that stops the motor movement
 
 
-def main_boot_display():
-    print("Gate System v1.0")
-    print("Starting system...")
-    main_status = Pin(STATUS_LED_PIN, Pin.OUT)  # Status LED
-    main_status.value(1)
-    time.sleep(1)
-    main_status.value(0)
-    time.sleep(1)
-    main_status.value(1)
-    print("System started.")
-
-
 class Gate:
     def __init__(self, motor_enable, motor_direction):
         self.motor_enable = Pin(motor_enable, Pin.OUT)
@@ -61,16 +49,16 @@ class Gate:
         self.motor_direction.value(0)
 
 
-gate_x = Gate(KX_MOTOR_EN, KX_MOTOR_DIR)
-
-direction = Pin(DIRECTION_PIN, Pin.IN)
-start = Pin(START_PIN, Pin.IN)
-stop = Pin(STOP_PIN, Pin.IN)
-
-direction_value = 0
-
-start_time = 0
-end_time = 0
+def main_boot_display():
+    print("Gate System v1.0")
+    print("Starting system...")
+    main_status = Pin(STATUS_LED_PIN, Pin.OUT)  # Status LED
+    main_status.value(1)
+    time.sleep(1)
+    main_status.value(0)
+    time.sleep(1)
+    main_status.value(1)
+    print("System started.")
 
 
 def direction_callback(pin):
@@ -113,6 +101,17 @@ def stop_callback(pin):
         print("Gate closed.")
         print("Time taken to close the gate: ", end_time - start_time, "ms")
 
+
+gate_x = Gate(KX_MOTOR_EN, KX_MOTOR_DIR)
+
+direction = Pin(DIRECTION_PIN, Pin.IN)
+start = Pin(START_PIN, Pin.IN)
+stop = Pin(STOP_PIN, Pin.IN)
+
+direction_value = 0
+
+start_time = 0
+end_time = 0
 
 main_boot_display()
 
