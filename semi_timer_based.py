@@ -33,9 +33,9 @@ class Gate:
         Non-blocking function that moves the gate one way.
         """
         self.motor_enable.value(0)
-        time.sleep(0.2)
+        time.sleep(0.1)
         self.motor_direction.value(1)
-        time.sleep(0.2)
+        time.sleep(0.1)
         self.motor_enable.value(1)
 
     def move_cw(self):
@@ -43,9 +43,9 @@ class Gate:
         Non-blocking function that starts closing the gate.
         """
         self.motor_enable.value(0)
-        time.sleep(0.2)
+        time.sleep(0.1)
         self.motor_direction.value(0)
-        time.sleep(0.2)
+        time.sleep(0.1)
         self.motor_enable.value(1)
 
     def stop_gate(self):
@@ -53,7 +53,7 @@ class Gate:
         Non-blocking function that stops.
         """
         self.motor_enable.value(0)
-        time.sleep(0.2)
+        time.sleep(0.1)
         self.motor_direction.value(0)
 
 
@@ -144,7 +144,7 @@ def break_sensor_handler(pin):
         if gate_1_open_sensor.value() == 0:  # If gate 1 is not fully open
             gate_1.move_ccw()  # Open gate 1
             print("Gate 1 will now be opened...")
-        
+
         if gate_2_open_sensor.value() == 0:  # If gate 2 is not fully open
             gate_2.move_ccw()  # Open gate 2
             print("Gate 2 will now be opened...")
