@@ -25,27 +25,29 @@ class Gate:
         Non-blocking function that moves the gate one way.
         """
         self.motor_enable.value(0)
-        time.sleep(0.2)
+        time.sleep(0.1)
         self.motor_direction.value(1)
-        time.sleep(0.2)
+        time.sleep(0.1)
         self.motor_enable.value(1)
+        print("Gate should be opening...")
 
     def move_cw(self):
         """
         Non-blocking function that starts closing the gate.
         """
         self.motor_enable.value(0)
-        time.sleep(0.2)
+        time.sleep(0.1)
         self.motor_direction.value(0)
-        time.sleep(0.2)
+        time.sleep(0.1)
         self.motor_enable.value(1)
+        print("Gate should be closing...")
 
     def stop_gate(self):
         """
         Non-blocking function that stops.
         """
         self.motor_enable.value(0)
-        time.sleep(0.2)
+        time.sleep(0.1)
         self.motor_direction.value(0)
 
 
