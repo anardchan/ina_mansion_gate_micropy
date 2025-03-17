@@ -10,9 +10,9 @@ KX_MOTOR_EN = 16  # Pin that turns Motor on/off
 KX_MOTOR_DIR = 17  # Pin that sets Motor direction
 STATUS_LED_PIN = 4  # Pin that indicates if main is running
 
-DIRECTION_PIN = 36  # Pin that dictates the direction of the motor
-START_PIN = 39  # Pin that starts the motor movement
-STOP_PIN = 34  # Pin that stops the motor movement
+DIRECTION_PIN = 35  # Pin that dictates the direction of the motor
+START_PIN = 36  # Pin that starts the motor movement
+STOP_PIN = 39  # Pin that stops the motor movement
 
 
 class Gate:
