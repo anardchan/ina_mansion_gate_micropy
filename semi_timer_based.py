@@ -6,6 +6,9 @@ based on the the sensor reading. For closing the gate, the stop will be based on
 from machine import Pin, Timer  # type: ignore
 import time
 
+VERBOSE = True
+verboseprint = print if VERBOSE else lambda *a, **k: None
+
 # Define the pin numbers
 K1_MOTOR_1 = 16  # Pin that turns Motor 1 on/off
 K2_MOTOR_1 = 17  # Pin that sets Motor 1 direction
@@ -152,7 +155,7 @@ def break_sensor_handler(pin):
 
 def close_gates(timer):
     if break_sensor.value() == 1:
-        print("Attempted to close gates but break sensor is activated.")
+        verbose_print("Attempted to close gates but break sensor is activated.")
         print("Restarting countdown timer...")
         gate_countdown_timer.deinit()
         gate_countdown_timer.init(
