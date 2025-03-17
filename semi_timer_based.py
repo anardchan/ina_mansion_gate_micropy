@@ -19,8 +19,8 @@ OPEN_GATE_SWITCH_PIN = 35  # Pin that opens the gate
 
 # Timer values
 KEEP_GATE_OPEN_TIME = 15000  # Default time to keep the gate open in ms
-GATE_1_TIME_TO_CLOSE = 10000  # Default time to close gate 1 in ms
-GATE_2_TIME_TO_CLOSE = 10000  # Default time to close gate 2 in ms
+GATE_1_TIME_TO_CLOSE = 11500  # Default time to close gate 1 in ms
+GATE_2_TIME_TO_CLOSE = 13000  # Default time to close gate 2 in ms
 
 
 class Gate:
@@ -98,7 +98,7 @@ def open_gate_switch_handler(pin):
             gate_2.stop_gate()
             gate_countdown_timer.deinit()
             gate_countdown_timer.init(
-                Timer.ONE_SHOT, period=KEEP_GATE_OPEN_TIME, callback=close_gates
+                mode=Timer.ONE_SHOT, period=KEEP_GATE_OPEN_TIME, callback=close_gates
             )
             print("Gates are fully opened. Restarting countdown timer...")
 
@@ -112,7 +112,7 @@ def gate_1_open_sensor_handler(pin):
     print("Gate 1 opened.")
     gate_1_close_timer.deinit()
     gate_countdown_timer.init(
-        Timer.ONE_SHOT, period=KEEP_GATE_OPEN_TIME, callback=close_gates
+        mode=Timer.ONE_SHOT, period=KEEP_GATE_OPEN_TIME, callback=close_gates
     )
     print("Gate 1 is fully opened. Restarting countdown timer...")
 
@@ -122,7 +122,7 @@ def gate_2_open_sensor_handler(pin):
     print("Gate 2 opened.")
     gate_2_close_timer.deinit()
     gate_countdown_timer.init(
-        Timer.ONE_SHOT, period=KEEP_GATE_OPEN_TIME, callback=close_gates
+        mode=Timer.ONE_SHOT, period=KEEP_GATE_OPEN_TIME, callback=close_gates
     )
     print("Gate 2 is fully opened. Restarting countdown timer...")
 
@@ -137,7 +137,7 @@ def break_sensor_handler(pin):
             gate_2.stop_gate()
             gate_countdown_timer.deinit()
             gate_countdown_timer.init(
-                Timer.ONE_SHOT, period=KEEP_GATE_OPEN_TIME, callback=close_gates
+                mode=Timer.ONE_SHOT, period=KEEP_GATE_OPEN_TIME, callback=close_gates
             )
             print("Gates are fully opened. Restarting countdown timer...")
 
@@ -156,7 +156,7 @@ def close_gates(timer):
         print("Restarting countdown timer...")
         gate_countdown_timer.deinit()
         gate_countdown_timer.init(
-            Timer.ONE_SHOT, period=KEEP_GATE_OPEN_TIME, callback=close_gates
+            mode=Timer.ONE_SHOT, period=KEEP_GATE_OPEN_TIME, callback=close_gates
         )
         return
 
