@@ -6,7 +6,7 @@ based on the the sensor reading. For closing the gate, the stop will be based on
 from machine import Pin, Timer  # type: ignore
 import time
 
-from gate_control import Gate 
+from gate_control import Gate
 
 VERBOSE = True
 verbose_print = print if VERBOSE else lambda *a, **k: None
@@ -40,6 +40,7 @@ LAMP_PERIOD = 500  # Default time to blink the lamp in ms
 # PIN Callback Functions #
 ##########################
 
+
 def open_gate_switch_handler(pin):
     global system_active
 
@@ -68,10 +69,14 @@ def open_gate_switch_handler(pin):
 
     if gate_1_open_sensor.value() == 0:  # If gate 1 is not fully open
         gate_1.move_ccw()  # Open gate 1
+        lamp_timer.deinit()
+        lamp_timer.init(mode=Timer.PERIODIC, period=LAMP_PERIOD, callback=lamp_blink)
         verbose_print("Gate 1 will now be opened...")
 
     if gate_2_open_sensor.value() == 0:  # If gate 2 is not fully open
         gate_2.move_ccw()  # Open gate 2
+        lamp_timer.deinit()
+        lamp_timer.init(mode=Timer.PERIODIC, period=LAMP_PERIOD, callback=lamp_blink)
         verbose_print("Gate 2 will now be opened...")
 
     # If gates are fully open, stop the motors and restart the timer
@@ -82,6 +87,8 @@ def open_gate_switch_handler(pin):
         gate_countdown_timer.init(
             mode=Timer.ONE_SHOT, period=KEEP_GATE_OPEN_TIME, callback=close_gates
         )
+        lamp_timer.deinit()
+        lamp.value(1)
         verbose_print("Gates are fully opened. Restarting countdown timer...")
 
 
@@ -92,6 +99,8 @@ def gate_1_open_sensor_handler(pin):
     gate_countdown_timer.init(
         mode=Timer.ONE_SHOT, period=KEEP_GATE_OPEN_TIME, callback=close_gates
     )
+    lamp_timer.deinit()
+    lamp.value(1)
     verbose_print("Gate 1 is fully opened. Restarting countdown timer...")
 
 
@@ -102,6 +111,8 @@ def gate_2_open_sensor_handler(pin):
     gate_countdown_timer.init(
         mode=Timer.ONE_SHOT, period=KEEP_GATE_OPEN_TIME, callback=close_gates
     )
+    lamp_timer.deinit()
+    lamp.value(1)
     verbose_print("Gate 2 is fully opened. Restarting countdown timer...")
 
 
@@ -117,19 +128,27 @@ def break_sensor_handler(pin):
             gate_countdown_timer.init(
                 mode=Timer.ONE_SHOT, period=KEEP_GATE_OPEN_TIME, callback=close_gates
             )
+            lamp_timer.deinit()
+            lamp.value(1)
             verbose_print("Gates are fully opened. Restarting countdown timer...")
 
         if gate_1_open_sensor.value() == 0:  # If gate 1 is not fully open
             gate_1.move_ccw()  # Open gate 1
+            lamp_timer.deinit()
+            lamp_timer.init(mode=Timer.PERIODIC, period=LAMP_PERIOD, callback=lamp_blink)
             verbose_print("Gate 1 will now be opened...")
 
         if gate_2_open_sensor.value() == 0:  # If gate 2 is not fully open
             gate_2.move_ccw()  # Open gate 2
+            lamp_timer.deinit()
+            lamp_timer.init(mode=Timer.PERIODIC, period=LAMP_PERIOD, callback=lamp_blink)
             verbose_print("Gate 2 will now be opened...")
+
 
 ############################
 # TIMER callback functions #
 ############################
+
 
 def close_gates(timer):
     if break_sensor.value() == 1:
@@ -152,15 +171,19 @@ def close_gates(timer):
     gate_2_close_timer.init(
         mode=Timer.ONE_SHOT, period=GATE_2_TIME_TO_CLOSE, callback=close_gate_2
     )
+    lamp_timer.deinit()
+    lamp_timer.init(mode=Timer.PERIODIC, period=LAMP_PERIOD, callback=lamp_blink)
 
 
 def close_gate_1(timer):
     gate_1.stop_gate()
+    # No need to stop the lamp blinking
     verbose_print("Gate 1 closed.")
 
 
 def close_gate_2(timer):
     gate_2.stop_gate()
+    # No need to stop the lamp blinking, handled in deactivate_system()
     verbose_print("Gate 2 closed.")
     deactivate_system()
     print("System deactivated.")
@@ -169,9 +192,11 @@ def close_gate_2(timer):
 def lamp_blink(timer):
     lamp.value(not lamp.value())
 
+
 ####################
 # Global Functions #
 ####################
+
 
 def deactivate_system():
     global system_active
@@ -188,7 +213,7 @@ def deactivate_system():
 
     lamp_timer.deinit()
     lamp.value(1)
-    time.sleep(2)
+    time.sleep(3)
     lamp.value(0)
 
 
