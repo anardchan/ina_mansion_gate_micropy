@@ -6,10 +6,15 @@ based on the the sensor reading. For closing the gate, the stop will be based on
 from machine import Pin, Timer  # type: ignore
 import time
 
+from gate_control import Gate 
+
 VERBOSE = True
 verbose_print = print if VERBOSE else lambda *a, **k: None
 
-# Define the pin numbers
+##################
+# PIN ASSIGNMENT #
+##################
+
 # Output pins
 K1_MOTOR_1 = 16  # Pin that turns Motor 1 on/off
 K2_MOTOR_1 = 17  # Pin that sets Motor 1 direction
@@ -22,57 +27,18 @@ GATE_2_OPEN_SENSOR_PIN = 39  # Pin that reads if gate 1 is fully closed
 BREAK_SENSOR_PIN = 34  # Pin that detects if something passes through the gate
 OPEN_GATE_SWITCH_PIN = 35  # Pin that opens the gate
 
-# Timer values
+################
+# Timer Values #
+################
+
 KEEP_GATE_OPEN_TIME = 10000  # Default time to keep the gate open in ms
 GATE_1_TIME_TO_CLOSE = 11500  # Default time to close gate 1 in ms
 GATE_2_TIME_TO_CLOSE = 13000  # Default time to close gate 2 in ms
 LAMP_PERIOD = 500  # Default time to blink the lamp in ms
 
-
-class Gate:
-    def __init__(self, motor_enable, motor_direction):
-        self.motor_enable = Pin(motor_enable, Pin.OUT)
-        self.motor_direction = Pin(motor_direction, Pin.OUT)
-
-    def move_ccw(self):
-        """
-        Non-blocking function that moves the gate one way.
-        """
-        self.motor_enable.value(0)
-        time.sleep(0.1)
-        self.motor_direction.value(1)
-        time.sleep(0.1)
-        self.motor_enable.value(1)
-
-        lamp.value(0)
-        lamp_timer.deinit()
-        lamp_timer.init(mode=Timer.PERIODIC, period=LAMP_PERIOD, callback=lamp_blink)
-
-    def move_cw(self):
-        """
-        Non-blocking function that starts closing the gate.
-        """
-        self.motor_enable.value(0)
-        time.sleep(0.1)
-        self.motor_direction.value(0)
-        time.sleep(0.1)
-        self.motor_enable.value(1)
-
-        lamp.value(0)
-        lamp_timer.deinit()
-        lamp_timer.init(mode=Timer.PERIODIC, period=LAMP_PERIOD, callback=lamp_blink)
-
-    def stop_gate(self):
-        """
-        Non-blocking function that stops.
-        """
-        self.motor_enable.value(0)
-        time.sleep(0.1)
-        self.motor_direction.value(0)
-
-        lamp_timer.deinit()
-        lamp.value(1)
-
+##########################
+# PIN Callback Functions #
+##########################
 
 def open_gate_switch_handler(pin):
     global system_active
@@ -161,6 +127,9 @@ def break_sensor_handler(pin):
             gate_2.move_ccw()  # Open gate 2
             verbose_print("Gate 2 will now be opened...")
 
+############################
+# TIMER callback functions #
+############################
 
 def close_gates(timer):
     if break_sensor.value() == 1:
@@ -200,6 +169,9 @@ def close_gate_2(timer):
 def lamp_blink(timer):
     lamp.value(not lamp.value())
 
+####################
+# Global Functions #
+####################
 
 def deactivate_system():
     global system_active
