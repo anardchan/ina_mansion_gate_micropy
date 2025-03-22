@@ -32,7 +32,7 @@ OPEN_GATE_SWITCH_PIN = 35  # Pin that opens the gate
 # RC522_MISO_PIN =  # Pin for MISO
 # RC522_MOSI_PIN =  # Pin for MOSI
 # RC522_SCK_PIN =   # Pin for SCK
-# RC522_SS_PIN =   # Pin for SS
+# RC522_SS_GATE_IN_PIN =   # Pin for SS
 
 ################
 # Timer Values #
