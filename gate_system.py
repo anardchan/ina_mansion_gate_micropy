@@ -20,7 +20,7 @@ K1_MOTOR_1 = 16  # Pin that turns Motor 1 on/off
 K2_MOTOR_1 = 17  # Pin that sets Motor 1 direction
 K4_MOTOR_2 = 25  # Pin that turns Motor 2 on/off
 K3_MOTOR_2 = 26  # Pin that sets Motor 2 direction
-LAMP_PIN = 5  # Pin that turns the lamp on/off
+LAMP_PIN = 4  # Pin that turns the lamp on/off
 # Input pins
 GATE_1_OPEN_SENSOR_PIN = 36  # Pin that reads if gate 1 is fully open
 GATE_2_OPEN_SENSOR_PIN = 39  # Pin that reads if gate 1 is fully closed
