@@ -6,8 +6,8 @@ based on the the sensor reading. For closing the gate, the stop will be based on
 from machine import Pin, Timer  # type: ignore
 import time
 
-from gate_control import Gate
-from bounce import PinDebounce
+from lib.gate_control import Gate
+from lib.bounce import PinDebounce
 
 VERBOSE = True
 verbose_print = print if VERBOSE else lambda *a, **k: None
