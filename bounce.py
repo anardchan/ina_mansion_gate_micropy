@@ -32,13 +32,12 @@ class PinDebounce:
             callback (function): Function to call when the switch is pressed.
             debounce_time (int): Minimum time between valid presses (in ms).
         """
-        self.pin = Pin(pin_number, Pin.IN)  # Using external pull-up
+        self.pin = Pin(pin_number, Pin.IN)  # Using external pull-down
         self.callback = callback
         self.debounce_time = debounce_time
         self.last_press_time = 0  # Store last press time
-        self.pin.irq(
-            trigger=Pin.IRQ_RISING, handler=self._irq_handler
-        )  # Detect rising edge
+        self.irq_handler = self._irq_handler  # Store the IRQ handler function
+        self.disable_irq()  # Disable IRQ on initialization
 
     def _irq_handler(self, pin):
         """
@@ -53,6 +52,18 @@ class PinDebounce:
             if time.ticks_diff(current_time, self.last_press_time) > self.debounce_time:
                 self.last_press_time = current_time
                 self.callback()  # Execute the user-defined function
+    
+    def disable_irq(self):
+        """
+        Disables the IRQ for the switch to prevent further interrupts.
+        """
+        self.pin.irq(trigger=0, handler=None)  # Disable IRQ
+
+    def enable_irq(self):
+        """
+        Enables the IRQ for the switch to detect button presses again.
+        """
+        self.pin.irq(trigger=Pin.IRQ_RISING, handler=self.irq_handler)  # Enable IRQ
 
 
 if __name__ == "__main__":
