@@ -37,8 +37,8 @@ class PinDebounce:
         self.debounce_time = debounce_time
         self.last_press_time = 0  # Store last press time
         self.pin.irq(
-            trigger=Pin.IRQ_FALLING, handler=self._irq_handler
-        )  # Detect falling edge
+            trigger=Pin.IRQ_RISING, handler=self._irq_handler
+        )  # Detect rising edge
 
     def _irq_handler(self, pin):
         """
@@ -48,7 +48,7 @@ class PinDebounce:
             pin (Pin): The GPIO pin instance that triggered the interrupt.
         """
         time.sleep_ms(5)  # Small delay for stability
-        if pin.value() == 0:  # Ensure it's still LOW (pressed)
+        if pin.value() == 1:  # Ensure it's still HIGH (pressed)
             current_time = time.ticks_ms()
             if time.ticks_diff(current_time, self.last_press_time) > self.debounce_time:
                 self.last_press_time = current_time
