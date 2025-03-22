@@ -7,6 +7,7 @@ from machine import Pin, Timer  # type: ignore
 import time
 
 from gate_control import Gate
+from bounce import PinDebounce
 
 VERBOSE = True
 verbose_print = print if VERBOSE else lambda *a, **k: None
@@ -48,7 +49,7 @@ LAMP_PERIOD = 500  # Default time to blink the lamp in ms
 ##########################
 
 
-def open_gate_switch_handler(pin):
+def open_gate_switch_handler():
     global system_active
 
     verbose_print("Button pressed.")
@@ -56,17 +57,11 @@ def open_gate_switch_handler(pin):
         system_active = True
         verbose_print("System activated.")
         # Enable IRQs
-        gate_1_open_sensor.irq(
-            trigger=Pin.IRQ_RISING, handler=gate_1_open_sensor_handler
-        )
+        gate_1_open_sensor.enable_irq()
         verbose_print("Gate 1 opened sensor activated.")
-        gate_2_open_sensor.irq(
-            trigger=Pin.IRQ_RISING, handler=gate_2_open_sensor_handler
-        )
+        gate_2_open_sensor.enable_irq()
         verbose_print("Gate 2 opened sensor activated.")
-        break_sensor.irq(
-            trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=break_sensor_handler
-        )
+        break_sensor.enable_irq()
         verbose_print("Break sensor activated.")
 
     gate_1_close_timer.deinit()
@@ -74,20 +69,20 @@ def open_gate_switch_handler(pin):
     gate_2_close_timer.deinit()
     verbose_print("Gate 2 close timer deactivated.")
 
-    if gate_1_open_sensor.value() == 0:  # If gate 1 is not fully open
+    if gate_1_open_sensor.pin.value() == 0:  # If gate 1 is not fully open
         gate_1.move_ccw()  # Open gate 1
         lamp_timer.deinit()
         lamp_timer.init(mode=Timer.PERIODIC, period=LAMP_PERIOD, callback=lamp_blink)
         verbose_print("Gate 1 will now be opened...")
 
-    if gate_2_open_sensor.value() == 0:  # If gate 2 is not fully open
+    if gate_2_open_sensor.pin.value() == 0:  # If gate 2 is not fully open
         gate_2.move_ccw()  # Open gate 2
         lamp_timer.deinit()
         lamp_timer.init(mode=Timer.PERIODIC, period=LAMP_PERIOD, callback=lamp_blink)
         verbose_print("Gate 2 will now be opened...")
 
     # If gates are fully open, stop the motors and restart the timer
-    if gate_1_open_sensor.value() == 1 or gate_2_open_sensor.value() == 1:
+    if gate_1_open_sensor.pin.value() == 1 or gate_2_open_sensor.pin.value() == 1:
         gate_1.stop_gate()
         gate_2.stop_gate()
         gate_countdown_timer.deinit()
@@ -99,7 +94,7 @@ def open_gate_switch_handler(pin):
         verbose_print("Gates are fully opened. Restarting countdown timer...")
 
 
-def gate_1_open_sensor_handler(pin):
+def gate_1_open_sensor_handler():
     gate_1.stop_gate()
     verbose_print("Gate 1 opened.")
     gate_1_close_timer.deinit()
@@ -111,7 +106,7 @@ def gate_1_open_sensor_handler(pin):
     verbose_print("Gate 1 is fully opened. Restarting countdown timer...")
 
 
-def gate_2_open_sensor_handler(pin):
+def gate_2_open_sensor_handler():
     gate_2.stop_gate()
     verbose_print("Gate 2 opened.")
     gate_2_close_timer.deinit()
@@ -123,12 +118,12 @@ def gate_2_open_sensor_handler(pin):
     verbose_print("Gate 2 is fully opened. Restarting countdown timer...")
 
 
-def break_sensor_handler(pin):
-    if pin.value() == 1:
+def break_sensor_handler():
+    if break_sensor.pin.value() == 1:
         verbose_print("Break sensor activated.")
 
         # If gates are fully open, stop the motors and restart the timer
-        if gate_1_open_sensor.value() == 1 or gate_2_open_sensor.value() == 1:
+        if gate_1_open_sensor.pin.value() == 1 or gate_2_open_sensor.pin.value() == 1:
             gate_1.stop_gate()
             gate_2.stop_gate()
             gate_countdown_timer.deinit()
@@ -139,16 +134,20 @@ def break_sensor_handler(pin):
             lamp.value(1)
             verbose_print("Gates are fully opened. Restarting countdown timer...")
 
-        if gate_1_open_sensor.value() == 0:  # If gate 1 is not fully open
+        if gate_1_open_sensor.pin.value() == 0:  # If gate 1 is not fully open
             gate_1.move_ccw()  # Open gate 1
             lamp_timer.deinit()
-            lamp_timer.init(mode=Timer.PERIODIC, period=LAMP_PERIOD, callback=lamp_blink)
+            lamp_timer.init(
+                mode=Timer.PERIODIC, period=LAMP_PERIOD, callback=lamp_blink
+            )
             verbose_print("Gate 1 will now be opened...")
 
-        if gate_2_open_sensor.value() == 0:  # If gate 2 is not fully open
+        if gate_2_open_sensor.pin.value() == 0:  # If gate 2 is not fully open
             gate_2.move_ccw()  # Open gate 2
             lamp_timer.deinit()
-            lamp_timer.init(mode=Timer.PERIODIC, period=LAMP_PERIOD, callback=lamp_blink)
+            lamp_timer.init(
+                mode=Timer.PERIODIC, period=LAMP_PERIOD, callback=lamp_blink
+            )
             verbose_print("Gate 2 will now be opened...")
 
 
@@ -158,7 +157,7 @@ def break_sensor_handler(pin):
 
 
 def close_gates(timer):
-    if break_sensor.value() == 1:
+    if break_sensor.pin.value() == 1:
         verbose_print("Attempted to close gates but break sensor is activated.")
         verbose_print("Restarting countdown timer...")
         gate_countdown_timer.deinit()
@@ -208,20 +207,19 @@ def lamp_blink(timer):
 def deactivate_system():
     global system_active
     system_active = False
+    verbose_print("Deactivating system...")
 
     # Disable IRQs
-    gate_1_open_sensor.irq(trigger=0, handler=None)
-    gate_2_open_sensor.irq(trigger=0, handler=None)
-    break_sensor.irq(trigger=0, handler=None)
+    gate_1_open_sensor.disable_irq()
+    gate_2_open_sensor.disable_irq()
+    break_sensor.disable_irq()
 
     gate_countdown_timer.deinit()
     gate_1_close_timer.deinit()
     gate_2_close_timer.deinit()
-
+    
     lamp_timer.deinit()
     lamp.value(1)
-    time.sleep(3)
-    lamp.value(0)
 
 
 system_active = False
@@ -230,14 +228,20 @@ gate_1 = Gate(K1_MOTOR_1, K2_MOTOR_1)
 gate_2 = Gate(K4_MOTOR_2, K3_MOTOR_2)
 lamp = Pin(LAMP_PIN, Pin.OUT)
 
-gate_1_open_sensor = Pin(GATE_1_OPEN_SENSOR_PIN, Pin.IN)
-gate_2_open_sensor = Pin(GATE_2_OPEN_SENSOR_PIN, Pin.IN)
-break_sensor = Pin(BREAK_SENSOR_PIN, Pin.IN)
-open_gate_switch = Pin(OPEN_GATE_SWITCH_PIN, Pin.IN)
+gate_1_open_sensor = PinDebounce(
+    GATE_1_OPEN_SENSOR_PIN, gate_2_open_sensor_handler, debounce_time=500
+)
+gate_2_open_sensor = PinDebounce(
+    GATE_2_OPEN_SENSOR_PIN, gate_2_open_sensor_handler, debounce_time=500
+)
+break_sensor = PinDebounce(BREAK_SENSOR_PIN, break_sensor_handler, debounce_time=500)
+open_gate_switch = PinDebounce(
+    OPEN_GATE_SWITCH_PIN, open_gate_switch_handler, debounce_time=500
+)
 
 gate_countdown_timer = Timer(0)
 gate_1_close_timer = Timer(1)
 gate_2_close_timer = Timer(2)
 lamp_timer = Timer(3)
 
-open_gate_switch.irq(trigger=Pin.IRQ_RISING, handler=open_gate_switch_handler)
+open_gate_switch.enable_irq()
