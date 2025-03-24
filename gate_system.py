@@ -17,23 +17,23 @@ verbose_print = print if VERBOSE else lambda *a, **k: None
 ##################
 
 # Output pins
-K1_MOTOR_1 = 16  # Pin that turns Motor 1 on/off
-K2_MOTOR_1 = 17  # Pin that sets Motor 1 direction
-K4_MOTOR_2 = 25  # Pin that turns Motor 2 on/off
-K3_MOTOR_2 = 26  # Pin that sets Motor 2 direction
-LAMP_PIN = 4  # Pin that turns the lamp on/off
+K1_MOTOR_1 = 33  # Pin that turns Motor 1 on/off
+K2_MOTOR_1 = 25  # Pin that sets Motor 1 direction
+K4_MOTOR_2 = 26  # Pin that turns Motor 2 on/off
+K3_MOTOR_2 = 27  # Pin that sets Motor 2 direction
+LAMP_PIN = 32  # Pin that turns the lamp on/off
 # Input pins
 GATE_1_OPEN_SENSOR_PIN = 36  # Pin that reads if gate 1 is fully open
 GATE_2_OPEN_SENSOR_PIN = 39  # Pin that reads if gate 1 is fully closed
 BREAK_SENSOR_PIN = 34  # Pin that detects if something passes through the gate
 OPEN_GATE_SWITCH_PIN = 35  # Pin that opens the gate
 # RC522 pins
-# RC522_RST_PIN =   # Pin reset or power down the module
-# RC522_IRQ_PIN =   # Pin that reads the interrupt request
-# RC522_MISO_PIN =  # Pin for MISO
-# RC522_MOSI_PIN =  # Pin for MOSI
-# RC522_SCK_PIN =   # Pin for SCK
-# RC522_SS_GATE_IN_PIN =   # Pin for SS
+# RC522_RST_PIN = 16 # Pin reset or power down the module
+# RC522_IRQ_PIN = 17 # Pin that reads the interrupt request
+# RC522_MISO_PIN = 12 # Pin for MISO
+# RC522_MOSI_PIN = 13 # Pin for MOSI
+# RC522_SCK_PIN = 14 # Pin for SCK
+# RC522_SS_GATE_IN_PIN = 15  # Pin for SS
 
 ################
 # Timer Values #
