@@ -66,31 +66,35 @@ def open_gate_switch_handler():
         system_active = True
         verbose_print("System activated.")
         # Enable IRQs
-        gate_1_open_sensor.enable_irq()
-        verbose_print("Gate 1 opened sensor activated.")
-        gate_2_open_sensor.enable_irq()
-        verbose_print("Gate 2 opened sensor activated.")
         break_sensor.enable_irq()
-        verbose_print("Break sensor activated.")
+        verbose_print("Break sensor interrupt service activated.")
 
     gate_1_close_timer.deinit()
     verbose_print("Gate 1 close timer deactivated.")
     gate_2_close_timer.deinit()
     verbose_print("Gate 2 close timer deactivated.")
-    gate_1_status = 1  # Set gate 1 status to not closed
-    gate_2_status = 1  # Set gate 2 status to not closed
 
     if gate_1_open_sensor.pin.value() == 0:  # If gate 1 is not fully open
+        gate_1_open_sensor.enable_irq()  # Enable gate 1 open sensor interrupt service
+        verbose_print(
+            "Gate 1 opened sensor interrupt service activated. - push button pressed"
+        )
         gate_1.move_ccw()  # Open gate 1
+        verbose_print("Gate 1 will now be opened (by push button)...")
+        gate_1_status = 1  # Set gate 1 status to not closed
         lamp_timer.deinit()
         lamp_timer.init(mode=Timer.PERIODIC, period=LAMP_PERIOD, callback=lamp_blink)
-        verbose_print("Gate 1 will now be opened...")
 
     if gate_2_open_sensor.pin.value() == 0:  # If gate 2 is not fully open
+        gate_2_open_sensor.enable_irq()  # Enable gate 2 open sensor interrupt service
+        verbose_print(
+            "Gate 2 opened sensor interrupt service activated. - push button pressed"
+        )
         gate_2.move_ccw()  # Open gate 2
+        verbose_print("Gate 2 will now be opened (by push button)...")
+        gate_2_status = 1  # Set gate 2 status to not closed
         lamp_timer.deinit()
         lamp_timer.init(mode=Timer.PERIODIC, period=LAMP_PERIOD, callback=lamp_blink)
-        verbose_print("Gate 2 will now be opened...")
 
     # If gates are fully open, stop the motors and restart the timer
     if gate_1_open_sensor.pin.value() == 1 and gate_2_open_sensor.pin.value() == 1:
@@ -107,22 +111,30 @@ def open_gate_switch_handler():
 
 def gate_1_open_sensor_handler():
     time.sleep(1)
-    gate_1.stop_gate()
+    gate_1.stop_gate()  # Stop gate 1 motor
     verbose_print("Gate 1 opened.")
+    gate_1_open_sensor.disable_irq()  # Disable gate 1 open sensor interrupt service
+    verbose_print(
+        "Gate 1 opened sensor interrupt service deactivated - reached open sensor."
+    )
     gate_1_close_timer.deinit()
     gate_countdown_timer.deinit()
     gate_countdown_timer.init(
         mode=Timer.ONE_SHOT, period=KEEP_GATE_OPEN_TIME, callback=close_gates
     )
+    verbose_print("Gate 1 is fully opened. Restarting countdown timer...")
     lamp_timer.deinit()
     lamp.value(1)
-    verbose_print("Gate 1 is fully opened. Restarting countdown timer...")
 
 
 def gate_2_open_sensor_handler():
     time.sleep(1)
-    gate_2.stop_gate()
+    gate_2.stop_gate()  # Stop gate 2 motor
     verbose_print("Gate 2 opened.")
+    gate_2_open_sensor.disable_irq()  # Disable gate 2 open sensor interrupt service
+    verbose_print(
+        "Gate 2 opened sensor interrupt service deactivated - reached open sensor."
+    )
     gate_2_close_timer.deinit()
     gate_countdown_timer.deinit()
     gate_countdown_timer.init(
@@ -151,19 +163,27 @@ def break_sensor_handler():
 
         if gate_1_open_sensor.pin.value() == 0:  # If gate 1 is not fully open
             gate_1.move_ccw()  # Open gate 1
+            verbose_print("Gate 1 will now be opened...")
+            gate_1_open_sensor.enable_irq()  # Enable gate 1 open sensor interrupt service
+            verbose_print(
+                "Gate 1 opened sensor interrupt service activated by break sensor."
+            )
             lamp_timer.deinit()
             lamp_timer.init(
                 mode=Timer.PERIODIC, period=LAMP_PERIOD, callback=lamp_blink
             )
-            verbose_print("Gate 1 will now be opened...")
 
         if gate_2_open_sensor.pin.value() == 0:  # If gate 2 is not fully open
             gate_2.move_ccw()  # Open gate 2
+            verbose_print("Gate 2 will now be opened...")
+            gate_2_open_sensor.enable_irq()  # Enable gate 2 open sensor interrupt service
+            verbose_print(
+                "Gate 2 opened sensor interrupt service activated by break sensor."
+            )
             lamp_timer.deinit()
             lamp_timer.init(
                 mode=Timer.PERIODIC, period=LAMP_PERIOD, callback=lamp_blink
             )
-            verbose_print("Gate 2 will now be opened...")
 
 
 ############################
