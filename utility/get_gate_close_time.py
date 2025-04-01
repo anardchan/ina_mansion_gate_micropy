@@ -6,9 +6,9 @@ import time
 # K2_MOTOR_1 = 2  # Pin that sets Motor 1 direction
 # K4_MOTOR_2 = 3  # Pin that turns Motor 2 on/off
 # K3_MOTOR_2 = 4  # Pin that sets Motor 2 direction
-KX_MOTOR_EN = 16  # Pin that turns Motor on/off
-KX_MOTOR_DIR = 17  # Pin that sets Motor direction
-STATUS_LED_PIN = 4  # Pin that indicates if main is running
+KX_MOTOR_EN = 33  # Pin that turns Motor on/off
+KX_MOTOR_DIR = 25  # Pin that sets Motor direction
+STATUS_LED_PIN = 32  # Pin that indicates if main is running
 
 DIRECTION_PIN = 35  # Pin that dictates the direction of the motor
 START_PIN = 36  # Pin that starts the motor movement
