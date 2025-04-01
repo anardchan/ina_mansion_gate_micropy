@@ -44,6 +44,14 @@ GATE_1_TIME_TO_CLOSE = 11500  # Default time to close gate 1 in ms
 GATE_2_TIME_TO_CLOSE = 13000  # Default time to close gate 2 in ms
 LAMP_PERIOD = 500  # Default time to blink the lamp in ms
 
+#############
+# Variables #
+#############
+
+gate_1_status = 0  # 0 = closed, 1 = not closed
+gate_2_status = 0  # 0 = closed, 1 = not closed
+
+
 ##########################
 # PIN Callback Functions #
 ##########################
@@ -51,7 +59,8 @@ LAMP_PERIOD = 500  # Default time to blink the lamp in ms
 
 def open_gate_switch_handler():
     global system_active
-
+    global gate_1_status
+    global gate_2_status
     verbose_print("Button pressed.")
     if not system_active:
         system_active = True
@@ -68,6 +77,8 @@ def open_gate_switch_handler():
     verbose_print("Gate 1 close timer deactivated.")
     gate_2_close_timer.deinit()
     verbose_print("Gate 2 close timer deactivated.")
+    gate_1_status = 1  # Set gate 1 status to not closed
+    gate_2_status = 1  # Set gate 2 status to not closed
 
     if gate_1_open_sensor.pin.value() == 0:  # If gate 1 is not fully open
         gate_1.move_ccw()  # Open gate 1
@@ -82,7 +93,7 @@ def open_gate_switch_handler():
         verbose_print("Gate 2 will now be opened...")
 
     # If gates are fully open, stop the motors and restart the timer
-    if gate_1_open_sensor.pin.value() == 1 or gate_2_open_sensor.pin.value() == 1:
+    if gate_1_open_sensor.pin.value() == 1 and gate_2_open_sensor.pin.value() == 1:
         gate_1.stop_gate()
         gate_2.stop_gate()
         gate_countdown_timer.deinit()
@@ -95,9 +106,11 @@ def open_gate_switch_handler():
 
 
 def gate_1_open_sensor_handler():
+    time.sleep(1)
     gate_1.stop_gate()
     verbose_print("Gate 1 opened.")
     gate_1_close_timer.deinit()
+    gate_countdown_timer.deinit()
     gate_countdown_timer.init(
         mode=Timer.ONE_SHOT, period=KEEP_GATE_OPEN_TIME, callback=close_gates
     )
@@ -107,9 +120,11 @@ def gate_1_open_sensor_handler():
 
 
 def gate_2_open_sensor_handler():
+    time.sleep(1)
     gate_2.stop_gate()
     verbose_print("Gate 2 opened.")
     gate_2_close_timer.deinit()
+    gate_countdown_timer.deinit()
     gate_countdown_timer.init(
         mode=Timer.ONE_SHOT, period=KEEP_GATE_OPEN_TIME, callback=close_gates
     )
@@ -157,6 +172,8 @@ def break_sensor_handler():
 
 
 def close_gates(timer):
+    global gate_1_status
+    global gate_2_status
     if break_sensor.pin.value() == 1:
         verbose_print("Attempted to close gates but break sensor is activated.")
         verbose_print("Restarting countdown timer...")
@@ -165,32 +182,37 @@ def close_gates(timer):
             mode=Timer.ONE_SHOT, period=KEEP_GATE_OPEN_TIME, callback=close_gates
         )
         return
-
-    gate_1.move_cw()
-    verbose_print("Gate 1 will now be closed...")
-    gate_1_close_timer.init(
-        mode=Timer.ONE_SHOT, period=GATE_1_TIME_TO_CLOSE, callback=close_gate_1
-    )
+    if gate_1_status == 1:  # If gate 1 is not closed
+        verbose_print("Gate 1 will now be closed...")
+        gate_1.move_cw()
+        gate_1_close_timer.init(
+            mode=Timer.ONE_SHOT, period=GATE_1_TIME_TO_CLOSE, callback=close_gate_1
+        )
     time.sleep(1)
-    gate_2.move_cw()
-    verbose_print("Gate 2 will now be closed...")
-    gate_2_close_timer.init(
-        mode=Timer.ONE_SHOT, period=GATE_2_TIME_TO_CLOSE, callback=close_gate_2
-    )
+    if gate_2_status == 1:  # If gate 2 is not closed
+        verbose_print("Gate 2 will now be closed...")
+        gate_2.move_cw()
+        gate_2_close_timer.init(
+            mode=Timer.ONE_SHOT, period=GATE_2_TIME_TO_CLOSE, callback=close_gate_2
+        )
     lamp_timer.deinit()
     lamp_timer.init(mode=Timer.PERIODIC, period=LAMP_PERIOD, callback=lamp_blink)
 
 
 def close_gate_1(timer):
+    global gate_1_status
     gate_1.stop_gate()
     # No need to stop the lamp blinking
     verbose_print("Gate 1 closed.")
+    gate_1_status = 0  # Set gate 1 status to closed
 
 
 def close_gate_2(timer):
+    global gate_2_status
     gate_2.stop_gate()
     # No need to stop the lamp blinking, handled in deactivate_system()
     verbose_print("Gate 2 closed.")
+    gate_2_status = 0  # Set gate 2 status to closed
     deactivate_system()
     print("System deactivated.")
 
@@ -217,7 +239,7 @@ def deactivate_system():
     gate_countdown_timer.deinit()
     gate_1_close_timer.deinit()
     gate_2_close_timer.deinit()
-    
+
     lamp_timer.deinit()
     lamp.value(1)
 
@@ -229,10 +251,10 @@ gate_2 = Gate(K4_MOTOR_2, K3_MOTOR_2)
 lamp = Pin(LAMP_PIN, Pin.OUT)
 
 gate_1_open_sensor = PinDebounce(
-    GATE_1_OPEN_SENSOR_PIN, gate_2_open_sensor_handler, debounce_time=500
+    GATE_1_OPEN_SENSOR_PIN, gate_1_open_sensor_handler, debounce_time=500
 )
 gate_2_open_sensor = PinDebounce(
-    GATE_2_OPEN_SENSOR_PIN, gate_2_open_sensor_handler, debounce_time=500
+    GATE_2_OPEN_SENSOR_PIN, gate_2_open_sensor_handler, debounce_time=3000
 )
 break_sensor = PinDebounce(BREAK_SENSOR_PIN, break_sensor_handler, debounce_time=500)
 open_gate_switch = PinDebounce(
