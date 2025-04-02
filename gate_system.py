@@ -40,9 +40,9 @@ OPEN_GATE_SWITCH_PIN = 35  # Pin that opens the gate
 ################
 
 KEEP_GATE_OPEN_TIME = 10000  # Default time to keep the gate open in ms
-GATE_1_TIME_TO_CLOSE = 11500  # Default time to close gate 1 in ms
-GATE_2_TIME_TO_CLOSE = 13000  # Default time to close gate 2 in ms
-LAMP_PERIOD = 500  # Default time to blink the lamp in ms
+GATE_1_TIME_TO_CLOSE = 11000  # Default time to close gate 1 in ms
+GATE_2_TIME_TO_CLOSE = 12280  # Default time to close gate 2 in ms
+LAMP_PERIOD = 400  # Default time to blink the lamp in ms
 
 #############
 # Variables #
@@ -293,7 +293,7 @@ def deactivate_system():
     gate_2_close_timer.deinit()
 
     lamp_timer.deinit()
-    lamp.value(1)
+    lamp.value(0)
 
 
 gate_1 = Gate(K1_MOTOR_1, K2_MOTOR_1)
@@ -301,7 +301,7 @@ gate_2 = Gate(K4_MOTOR_2, K3_MOTOR_2)
 lamp = Pin(LAMP_PIN, Pin.OUT)
 
 gate_1_open_sensor = PinDebounce(
-    GATE_1_OPEN_SENSOR_PIN, gate_1_open_sensor_handler, debounce_time=500
+    GATE_1_OPEN_SENSOR_PIN, gate_1_open_sensor_handler, debounce_time=3000
 )
 gate_2_open_sensor = PinDebounce(
     GATE_2_OPEN_SENSOR_PIN, gate_2_open_sensor_handler, debounce_time=3000
