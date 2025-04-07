@@ -6,6 +6,7 @@ class Gate:
     def __init__(self, motor_enable, motor_direction):
         self.motor_enable = Pin(motor_enable, Pin.OUT)
         self.motor_direction = Pin(motor_direction, Pin.OUT)
+        self.status = 0  # 0 = closed, 1 = opening, 2 = opened, 3 = closing
 
     def move_ccw(self):
         """
