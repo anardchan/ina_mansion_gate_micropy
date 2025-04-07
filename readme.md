@@ -7,6 +7,9 @@
 ## ESP32
 - [ESP32-DevKitC V4](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-devkitc/user_guide.html)
 
+## Break Sensor ABT-30 Aleph 100' Outdoor 200' Indoor Dual Twin Beam
+- [ABT-30](https://dwg.us/ecommerce/pc/viewPrd.asp?idproduct=136576&srsltid=AfmBOopSMKv7vpceHVE2ciQFNJ_UvItQHwZyacHZCleJeYDmerh2W5Sm)
+
 # How to debug using `rshell`
 1. Run `rshell` in terminal.
 2. Connect to board with `connect` command.
