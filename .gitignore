@@ -1,3 +1,7 @@
 .DS_Store
 .ampy
 main.py
+lib/arduino*
+lib/wendlers*
+scratch/*
+Ina Mansion Gate.pages
