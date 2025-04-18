@@ -138,6 +138,8 @@ def open_gate_switch_handler():
 
     # Lamp control by PB
     if gate_1.status == 1 or gate_2.status == 1:  # If any gate is opening
+        lamp_timer.deinit()  # Deactivate the timer
+        lamp.value(0)  # Turn off the lamp
         lamp_timer.init(mode=Timer.PERIODIC, period=LAMP_PERIOD, callback=lamp_blink)
 
 
@@ -294,6 +296,7 @@ def close_gates(timer):
     # If either gate is closing, Blink the lamp
     if gate_1.status == 3 or gate_2.status == 3:
         verbose_print("Lamp blinking started by timer.")
+        lamp_timer
         lamp_timer.init(mode=Timer.PERIODIC, period=LAMP_PERIOD, callback=lamp_blink)
         verbose_print("Lamp blinking started by close gates timer.")
         break_sensor.enable_irq()  # Enable break sensor interrupt service
@@ -325,7 +328,7 @@ def close_gate_2(timer):
 
 
 def lamp_blink(timer):
-    lamp.value(not lamp.value())
+    lamp.on() if lamp.value() == 0 else lamp.off()
 
 
 ####################
