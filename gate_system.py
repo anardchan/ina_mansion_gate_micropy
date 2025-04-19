@@ -7,7 +7,6 @@ from lib.gate_control import Gate
 from lib.bounce import PinDebounce
 
 from machine import Pin, Timer  # type: ignore
-import time
 
 VERBOSE = True
 verbose_print = print if VERBOSE else lambda *a, **k: None
@@ -351,7 +350,7 @@ def deactivate_system():
     gate_2_close_timer.deinit()
 
     lamp_timer.deinit()
-    lamp.value(0) # Turn off the lamp
+    lamp.value(0)  # Turn off the lamp
 
 
 gate_1 = Gate(K1_MOTOR_1, K2_MOTOR_1)
