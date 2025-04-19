@@ -3,6 +3,9 @@ This gate system app version is semi-timer based meaning, it is designed such th
 based on the the sensor reading. For closing the gate, the stop will be based on the timer countdown.
 """
 
+import network  # type: ignore
+import espnow  # type: ignore
+
 from lib.gate_control import Gate
 from lib.bounce import PinDebounce
 
@@ -373,5 +376,28 @@ gate_1_close_timer = Timer(1)
 gate_2_close_timer = Timer(2)
 lamp_timer = Timer(3)
 
+# A WLAN interface must be active to send()/recv() via ESP-NOW
+sta = network.WLAN(network.STA_IF)
+sta.active(True)
+sta.disconnect()  # ESP-NOW does not have to be connected to a network
+# Initialize and activate ESP-NOW
+e = espnow.ESPNow()
+e.active(True)
+
+
+def recv_cb(e):
+    while True:  # Read out all messages waiting in the buffer
+        mac, msg = e.irecv(0)  # Don't wait if no messages left
+        if mac is None:
+            verbose_print("No more messages.")
+            return
+        verbose_print(mac, msg.hex())
+        if msg == b"\x01":
+            # If the message is 0x01, open the gate
+            open_gate_switch_handler()
+
+
 lamp.off()
-open_gate_switch.enable_irq()
+
+# Enable the ESP-NOW interrupt service
+e.irq(recv_cb)
