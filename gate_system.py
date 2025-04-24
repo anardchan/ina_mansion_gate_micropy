@@ -29,13 +29,6 @@ GATE_1_OPEN_SENSOR_PIN = 36  # Pin that reads if gate 1 is fully open
 GATE_2_OPEN_SENSOR_PIN = 39  # Pin that reads if gate 1 is fully closed
 BREAK_SENSOR_PIN = 34  # Pin that detects if something passes through the gate
 OPEN_GATE_SWITCH_PIN = 35  # Pin that opens the gate
-# RC522 pins
-# RC522_RST_PIN = 16 # Pin reset or power down the module
-# RC522_IRQ_PIN = 17 # Pin that reads the interrupt request
-# RC522_MISO_PIN = 12 # Pin for MISO
-# RC522_MOSI_PIN = 13 # Pin for MOSI
-# RC522_SCK_PIN = 14 # Pin for SCK
-# RC522_SS_GATE_IN_PIN = 15  # Pin for SS
 
 ################
 # Timer Values #
