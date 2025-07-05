@@ -44,7 +44,7 @@ def main():
         if response == b'\xa2': 
             oled.show_lines(["Access granted"])
             esp.send(GATE_CONTROLLER_MAC, b'\x01')
-        elif response == b'\xa2':
+        elif response == b'\xa3':
             oled.show_lines(["Access denied"])
         elif mac is None and response is None:
             oled.show_lines(["No response from", "Admin Board.", "Try again."])
