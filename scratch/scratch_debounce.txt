@@ -1,0 +1,14 @@
+global debounce_timer
+if debounce_timer is None:
+    do something
+
+    # Start a timer for debounce period (e.g., 200 milliseconds)
+    debounce_timer = Timer(3)
+    debounce_timer.init(mode=Timer.ONE_SHOT, period=200, callback=debounce_callback)
+
+
+def debounce_callback(timer):
+    global debounce_timer
+    debounce_timer = None
+
+debounce_timer = None
