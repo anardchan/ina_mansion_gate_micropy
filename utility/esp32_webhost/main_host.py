@@ -5,7 +5,7 @@ import _thread
 from machine import Pin, Timer
 import dns_server
 
-led = Pin(4, Pin.OUT)
+led = Pin(2, Pin.OUT)
 CUSTOM_DOMAIN = "open.button"
 HTML_PAGE = """<!DOCTYPE html>
 <html><head><title>ESP32</title><meta name="viewport" content="width=device-width, initial-scale=1.0">
