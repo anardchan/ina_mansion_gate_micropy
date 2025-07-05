@@ -10,12 +10,25 @@
 ## Break Sensor ABT-30 Aleph 100' Outdoor 200' Indoor Dual Twin Beam
 - [ABT-30](https://dwg.us/ecommerce/pc/viewPrd.asp?idproduct=136576&srsltid=AfmBOopSMKv7vpceHVE2ciQFNJ_UvItQHwZyacHZCleJeYDmerh2W5Sm)
 
+## SSD1306
+- Used to gether with micropython
+- SSD1306 module found [here](https://github.com/stlehmann/micropython-ssd1306/tree/master).
+
+## MFRC522
+- Used to gether with micropython
+- MFRC522 module found [here](https://github.com/wendlers/micropython-mfrc522/tree/master).
+
+# System Overview
+
+
 # How to debug using `rshell`
 1. Run `rshell` in terminal.
-2. Connect to board with `connect` command.
-    - format of `connect` command
-    - `connect serial port [baud]`
-3. Follow instructions to paste code and start debugging.
+2. Connect to board with .
+    - `connect` command
+        - format of `connect` command
+        - `connect serial port [baud]`
+3. Shortcut `rhsell --port [user port]`
+4. Follow instructions to paste code and start debugging.
 
 # Some Notes
 ## Ampy
