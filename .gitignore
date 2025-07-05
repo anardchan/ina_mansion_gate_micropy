@@ -5,3 +5,6 @@ lib/arduino*
 lib/wendlers*
 scratch/*
 Ina Mansion Gate.pages
+documents/arduino-mfrc522/*
+documents/wendlers-micropython-mfrc522/*
+examples/micropython-mfrc522-master/*
