@@ -32,11 +32,12 @@ def main():
         oled.show_lines(["Please scan", "your card."])
         card_id = rfid.wait_for_card()
         oled.show_lines(["Scanned:", card_id, "Checking..."])
-        time.sleep(2)  # Allow time for display update
 
         # Send ID prefixed with 0xA0
         raw_bytes = bytes.fromhex(card_id[2:])
         esp.send(RUNNER_MAC, b'\xa1' + raw_bytes)
+        time.sleep(5)  # Allow time for display update
+
         mac, response = esp.recv()
         print(f"[INSIDE READER] Received from {mac}: {response}")
     
@@ -49,6 +50,6 @@ def main():
             oled.show_lines(["No response from", "Admin Board.", "Try again."])
         else:
             oled.show_lines(["Unexpected response", "from Admin Board."])
-        time.sleep(2)  # Allow time for display update
+        time.sleep(5)  # Allow time for display update
 
 main()
