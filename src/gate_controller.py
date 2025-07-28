@@ -323,14 +323,6 @@ def broken_gate_handler(timer):
     It checks if either gate motor has been running for more than the specified time.
     If so, it stops the gate and deactivates the system.
     """
-    if gate_1.status == 1 or gate_1.status == 3:
-        verbose_print("Gate 1 motor has been running too long. Stopping it.")
-        gate_1.stop_gate()
-        gate_1.status = 0  # Set gate 1 status to closed
-        gate_1_open_sensor.disable_irq()  # Disable gate 1 open sensor interrupt service
-        gate_1_close_timer.deinit() # Deactivate gate 1 close timer
-
-
     if gate_2.status == 1 or gate_2.status == 3:
         verbose_print("Gate 2 motor has been running too long. Stopping it.")
         gate_2.stop_gate()
