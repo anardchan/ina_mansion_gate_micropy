@@ -128,7 +128,9 @@ def open_gate_switch_handler():
             gate_2_open_sensor.enable_irq()
             gate_2.status = 1  # Set gate 2 status to opening.
             broken_gate_timer.init(
-                mode=Timer.ONE_SHOT, period=BROKEN_GATE_TIMER, callback=broken_gate_handler
+                mode=Timer.ONE_SHOT,
+                period=BROKEN_GATE_TIMER,
+                callback=broken_gate_handler,
             )  # Start the broken gate timer
         else:
             gate_2.status = 2  # Set gate 2 status to opened
@@ -139,6 +141,7 @@ def open_gate_switch_handler():
     # Lamp control by PB
     if gate_1.status == 1 or gate_2.status == 1:  # If any gate is opening
         lamp.value(1)  # Turn on the lamp
+
 
 def gate_1_open_sensor_handler():
     verbose_print("Gate 1 opened.")
@@ -233,7 +236,9 @@ def break_sensor_handler():
             gate_2_open_sensor.enable_irq()  # Re-enable gate 2 open sensor interrupt service
             gate_2.status = 1  # Set gate 2 status to opening.
             broken_gate_timer.init(
-                mode=Timer.ONE_SHOT, period=BROKEN_GATE_TIMER, callback=broken_gate_handler
+                mode=Timer.ONE_SHOT,
+                period=BROKEN_GATE_TIMER,
+                callback=broken_gate_handler,
             )  # Start the broken gate timer
         else:
             gate_2.status = 2  # Set gate 2 status to opened
@@ -328,7 +333,7 @@ def broken_gate_handler(timer):
         gate_2.stop_gate()
         gate_2.status = 0  # Set gate 2 status to closed
         gate_2_open_sensor.disable_irq()  # Disable gate 2 open sensor interrupt service
-        gate_2_close_timer.deinit() # Deactivate gate 1 close timer
+        gate_2_close_timer.deinit()  # Deactivate gate 1 close timer
 
 
 ####################
@@ -380,6 +385,7 @@ sta.disconnect()  # ESP-NOW does not have to be connected to a network
 # Initialize and activate ESP-NOW
 e = espnow.ESPNow()
 e.active(True)
+
 
 def recv_cb(e):
     while True:  # Read out all messages waiting in the buffer
