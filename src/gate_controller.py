@@ -37,7 +37,7 @@ OPEN_GATE_SWITCH_PIN = 35  # Pin that opens the gate
 KEEP_GATE_OPEN_TIME = 150000  # Default time to keep the gate open in ms
 GATE_1_TIME_TO_CLOSE = 11000  # Default time to close gate 1 in ms
 GATE_2_TIME_TO_CLOSE = 12300  # Default time to close gate 2 in ms
-broken_gate_timer = 20000  # Timer that will check if gate motor has been running for more than x seconds
+BROKEN_GATE_TIMER = 20000  # Timer that will check if gate motor has been running for more than x seconds
 
 #############
 # Variables #
@@ -105,6 +105,9 @@ def open_gate_switch_handler():
             "Gate 2 opened sensor interrupt service activated - push button pressed"
         )
         gate_2.status = 1  # Set gate 2 status to opening.
+        broken_gate_timer.init(
+            mode=Timer.ONE_SHOT, period=BROKEN_GATE_TIMER, callback=broken_gate_handler
+        )  # Start the broken gate timer
     elif gate_2.status == 1:  # If gate 2 is opening and PB is pressed.
         verbose_print("Gate 2 is already opening...")
         verbose_print("PB did not affect the gate 2 motor.")
@@ -124,8 +127,12 @@ def open_gate_switch_handler():
             verbose_print("Gate 2 will now be opened...")
             gate_2_open_sensor.enable_irq()
             gate_2.status = 1  # Set gate 2 status to opening.
+            broken_gate_timer.init(
+                mode=Timer.ONE_SHOT, period=BROKEN_GATE_TIMER, callback=broken_gate_handler
+            )  # Start the broken gate timer
         else:
             gate_2.status = 2  # Set gate 2 status to opened
+            broken_gate_timer.deinit()  # Deactivate the broken gate timer
     else:
         verbose_print("Gate 2 is in an unknown state...")
 
@@ -156,6 +163,7 @@ def gate_2_open_sensor_handler():
     verbose_print("Gate 2 opened.")
     gate_2.stop_gate()  # Stop gate 2 motor
     gate_2.status = 2  # Set gate 2 status to opened
+    broken_gate_timer.deinit()  # Deactivate the broken gate timer
     if gate_1.status == 2 and gate_2.status == 2:  # If both gates are opened
         lamp.on()
     gate_2_open_sensor.disable_irq()  # Disable gate 2 open sensor interrupt service
@@ -224,8 +232,12 @@ def break_sensor_handler():
             verbose_print("Gate 2 will now be opened...")
             gate_2_open_sensor.enable_irq()  # Re-enable gate 2 open sensor interrupt service
             gate_2.status = 1  # Set gate 2 status to opening.
+            broken_gate_timer.init(
+                mode=Timer.ONE_SHOT, period=BROKEN_GATE_TIMER, callback=broken_gate_handler
+            )  # Start the broken gate timer
         else:
             gate_2.status = 2  # Set gate 2 status to opened
+            broken_gate_timer.deinit()  # Deactivate the broken gate timer
     elif gate_2.status == 0:  # If gate 2 is closed
         # ignore the break sensor callback
         verbose_print("Gate 2 is closed, break sensor ignored.")
@@ -256,6 +268,7 @@ def close_gates(timer):
         )
         gate_1.status = 2  # Set gate 1 status to opened
         gate_2.status = 2  # Set gate 2 status to opened
+        broken_gate_timer.deinit()  # Deactivate the broken gate timer
         return
 
     if gate_1.status == 2:  # If gate 1 is opened
@@ -302,6 +315,28 @@ def close_gate_2(timer):
         # Decativate the system
         verbose_print("Both gates are closed.")
         deactivate_system()
+
+
+def broken_gate_handler(timer):
+    """
+    This function is called when the broken gate timer expires.
+    It checks if either gate motor has been running for more than the specified time.
+    If so, it stops the gate and deactivates the system.
+    """
+    if gate_1.status == 1 or gate_1.status == 3:
+        verbose_print("Gate 1 motor has been running too long. Stopping it.")
+        gate_1.stop_gate()
+        gate_1.status = 0  # Set gate 1 status to closed
+        gate_1_open_sensor.disable_irq()  # Disable gate 1 open sensor interrupt service
+        gate_1_close_timer.deinit() # Deactivate gate 1 close timer
+
+
+    if gate_2.status == 1 or gate_2.status == 3:
+        verbose_print("Gate 2 motor has been running too long. Stopping it.")
+        gate_2.stop_gate()
+        gate_2.status = 0  # Set gate 2 status to closed
+        gate_2_open_sensor.disable_irq()  # Disable gate 2 open sensor interrupt service
+        gate_2_close_timer.deinit() # Deactivate gate 1 close timer
 
 
 ####################
@@ -353,7 +388,6 @@ sta.disconnect()  # ESP-NOW does not have to be connected to a network
 # Initialize and activate ESP-NOW
 e = espnow.ESPNow()
 e.active(True)
-
 
 def recv_cb(e):
     while True:  # Read out all messages waiting in the buffer
