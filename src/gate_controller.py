@@ -34,10 +34,10 @@ OPEN_GATE_SWITCH_PIN = 35  # Pin that opens the gate
 # Timer Values #
 ################
 
-KEEP_GATE_OPEN_TIME = 15000  # Default time to keep the gate open in ms
+KEEP_GATE_OPEN_TIME = 150000  # Default time to keep the gate open in ms
 GATE_1_TIME_TO_CLOSE = 11000  # Default time to close gate 1 in ms
 GATE_2_TIME_TO_CLOSE = 12300  # Default time to close gate 2 in ms
-LAMP_PERIOD = 500  # Default time to blink the lamp in ms
+broken_gate_timer = 20000  # Timer that will check if gate motor has been running for more than x seconds
 
 #############
 # Variables #
@@ -71,7 +71,6 @@ def open_gate_switch_handler():
         verbose_print(
             "Gate 1 opened sensor interrupt service activated - push button pressed"
         )
-        verbose_print("Lamp blinking started by gate 1 - PB.")
         gate_1.status = 1  # Set gate 1 status to opening.
         break_sensor.disable_irq()  # Disable break sensor interrupt service
     elif gate_1.status == 1:  # If gate 1 is opening and PB is pressed.
@@ -105,7 +104,6 @@ def open_gate_switch_handler():
         verbose_print(
             "Gate 2 opened sensor interrupt service activated - push button pressed"
         )
-        verbose_print("Lamp blinking started by gate 2 - PB.")
         gate_2.status = 1  # Set gate 2 status to opening.
     elif gate_2.status == 1:  # If gate 2 is opening and PB is pressed.
         verbose_print("Gate 2 is already opening...")
@@ -133,20 +131,14 @@ def open_gate_switch_handler():
 
     # Lamp control by PB
     if gate_1.status == 1 or gate_2.status == 1:  # If any gate is opening
-        lamp_timer.deinit()  # Deactivate the timer
-        lamp.value(0)  # Turn off the lamp
-        lamp_timer.init(mode=Timer.PERIODIC, period=LAMP_PERIOD, callback=lamp_blink)
-
+        lamp.value(1)  # Turn on the lamp
 
 def gate_1_open_sensor_handler():
     verbose_print("Gate 1 opened.")
     gate_1.stop_gate()  # Stop gate 1 motor
     gate_1.status = 2  # Set gate 1 status to opened
     if gate_2.status == 2 and gate_1.status == 2:  # If both gates are opened
-        # Stop the lamp blinking
-        lamp_timer.deinit()
-        if lamp.value() == 0:
-            lamp.on()
+        lamp.on()
     gate_1_open_sensor.disable_irq()  # Disable gate 1 open sensor interrupt service
     verbose_print(
         "Gate 1 opened sensor interrupt service deactivated - reached open sensor."
@@ -165,10 +157,7 @@ def gate_2_open_sensor_handler():
     gate_2.stop_gate()  # Stop gate 2 motor
     gate_2.status = 2  # Set gate 2 status to opened
     if gate_1.status == 2 and gate_2.status == 2:  # If both gates are opened
-        # Stop the lamp blinking
-        lamp_timer.deinit()
-        if lamp.value() == 0:
-            lamp.on()
+        lamp.on()
     gate_2_open_sensor.disable_irq()  # Disable gate 2 open sensor interrupt service
     verbose_print(
         "Gate 2 opened sensor interrupt service deactivated - reached open sensor."
@@ -245,10 +234,7 @@ def break_sensor_handler():
 
     if gate_1.status == 2 and gate_2.status == 2:
         # If both gates are opened
-        # Stop the lamp blinking
-        lamp_timer.deinit()
-        if lamp.value() == 0:
-            lamp.on()
+        lamp.on()
 
 
 ############################
@@ -288,12 +274,8 @@ def close_gates(timer):
         )
         gate_2.status = 3  # Set gate 2 status to closing
 
-    # If either gate is closing, Blink the lamp
+    # If either gate is closing
     if gate_1.status == 3 or gate_2.status == 3:
-        verbose_print("Lamp blinking started by timer.")
-        lamp_timer
-        lamp_timer.init(mode=Timer.PERIODIC, period=LAMP_PERIOD, callback=lamp_blink)
-        verbose_print("Lamp blinking started by close gates timer.")
         break_sensor.enable_irq()  # Enable break sensor interrupt service
         verbose_print("Break sensor interrupt service activated by close gates timer.")
 
@@ -322,10 +304,6 @@ def close_gate_2(timer):
         deactivate_system()
 
 
-def lamp_blink(timer):
-    lamp.on() if lamp.value() == 0 else lamp.off()
-
-
 ####################
 # Global Functions #
 ####################
@@ -345,7 +323,6 @@ def deactivate_system():
     gate_1_close_timer.deinit()
     gate_2_close_timer.deinit()
 
-    lamp_timer.deinit()
     lamp.value(0)  # Turn off the lamp
 
 
@@ -367,7 +344,7 @@ open_gate_switch = PinDebounce(
 gate_countdown_timer = Timer(0)
 gate_1_close_timer = Timer(1)
 gate_2_close_timer = Timer(2)
-lamp_timer = Timer(3)
+broken_gate_timer = Timer(3)
 
 # A WLAN interface must be active to send()/recv() via ESP-NOW
 sta = network.WLAN(network.STA_IF)
