@@ -1,7 +1,8 @@
 import network  # type: ignore
 import espnow  # type: ignore
 
-from lib.bounce import PinDebounce  # type: ignore
+from config import BENINCA_HEAD_MAC 
+from pb_debounce import PinDebounce 
 
 VERBOSE = True
 verbose_print = print if VERBOSE else lambda *a, **k: None
@@ -13,7 +14,7 @@ sta.disconnect()
 
 e = espnow.ESPNow()
 e.active(True)
-peer = b"\x1c\x69\x20\xce\xf7\xe4"  # MAC address of peer's wifi interface
+peer = BENINCA_HEAD_MAC  
 e.add_peer(peer)  # Must add_peer() before send()
 
 

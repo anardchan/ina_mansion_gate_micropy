@@ -6,8 +6,8 @@ based on the the sensor reading. For closing the gate, the stop will be based on
 import network  # type: ignore
 import espnow  # type: ignore
 
-from lib.gate_control import Gate
-from lib.bounce import PinDebounce
+from gate_control import Gate
+from pb_debounce import PinDebounce
 
 from machine import Pin, Timer  # type: ignore
 

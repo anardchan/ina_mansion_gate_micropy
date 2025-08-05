@@ -1,7 +1,7 @@
 """
 RFID Reader abstraction using MFRC522 on SPI.
 """
-
+import time
 from mfrc522 import MFRC522
 
 class RFIDReader:
@@ -16,6 +16,14 @@ class RFIDReader:
                 (stat, raw_uid) = self.rdr.anticoll()
                 if stat == self.rdr.OK:
                     return self._format_uid(raw_uid)
-
+    
+    def watch_for_card(self):
+        (stat, tag_type) = self.rdr.request(self.rdr.REQIDL)
+        if stat == self.rdr.OK:
+            (stat, raw_uid) = self.rdr.anticoll()
+            if stat == self.rdr.OK:
+                return self._format_uid(raw_uid)
+        return None
+    
     def _format_uid(self, raw_uid):
         return "0x" + "".join("{:02X}".format(i) for i in raw_uid)
