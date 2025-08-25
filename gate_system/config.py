@@ -36,4 +36,4 @@ LOG_MAX_FILES = 8  # 2 months * 4 weeks
 
 # Wi-Fi Credentials
 SSID = "Converge_2.4GHz_3Fck" 
-PW = "6tYjdM8m" 
+SSID_PW = "6tYjdM8m" 
