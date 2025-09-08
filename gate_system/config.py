@@ -26,7 +26,7 @@ SINGLE_ENTRY_FIRST_HOURS_DURATION = 4
 SINGLE_ENTRY_EXTRA_HOUR_RATE = 10
 
 # NTP
-NTP_SERVERS = ["3.pool.ntp.org", "0.asia.pool.ntp.org", "1.asia.pool.ntp.org"]
+NTP_SERVERS = ["3.pool.ntp.org", "time.nist.gov", "0.asia.pool.ntp.org", "1.asia.pool.ntp.org", "pool.ntp.org", "asia.pool.ntp.org", "europe.pool.ntp.org", "america.pool.ntp.org", "ntp.pagasa.dost.gov.ph", "time.upd.edu.ph", "us.pool.ntp.org"]
 UTC_OFFSET = 8 * 60 * 60  # GMT+8
 
 # Log settings
