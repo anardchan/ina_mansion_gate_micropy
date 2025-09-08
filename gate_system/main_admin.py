@@ -1,4 +1,5 @@
 import espnow  # type: ignore
+import network  # type: ignore
 import ntptime  # type: ignore
 import time
 import struct
@@ -16,24 +17,6 @@ def get_local_time(local_time_s: float = None):
     if local_time_s is None:
         local_time_s = get_local_time_s()
     return time.localtime(local_time_s)
-
-
-def do_connect_to_wifi():
-    """
-    Connect the board to the Wi-Fi network.
-    """
-    import network  # type: ignore
-
-    sta_if = network.WLAN(network.WLAN.IF_STA)  # Station Mode
-    sta_if.disconnect()
-    if not sta_if.isconnected():
-        print("[ADMIN] Connecting to network...")
-        sta_if.active(True)
-        sta_if.connect(SSID, SSID_PW)
-        while not sta_if.isconnected():
-            time.sleep(0.1)
-    print("[ADMIN] ✅ Connected to network:", sta_if.ifconfig()[0])
-
 
 def do_sync_time_online(ntp_servers: list, timeout: int = 5) -> bool:
     """
@@ -53,7 +36,17 @@ def do_sync_time_online(ntp_servers: list, timeout: int = 5) -> bool:
 
 # ---- MAIN INIT ----
 
-do_connect_to_wifi()
+# Connect the board to the Wi-Fi network.
+sta_if = network.WLAN(network.WLAN.IF_STA)  # Station mode
+sta_if.active(True)
+sta_if.disconnect()
+if not sta_if.isconnected():
+    print("[ADMIN] Connecting to network...")
+    sta_if.connect(SSID, SSID_PW)
+    while not sta_if.isconnected():
+        time.sleep(0.1)
+print("[ADMIN] ✅ Connected to network:", sta_if.ifconfig()[0])
+print("[ADMIN] ✅ Network channel:", sta_if.config("channel"))
 
 if not do_sync_time_online(NTP_SERVERS):
     raise Exception("Could not sync time on startup")
@@ -76,9 +69,10 @@ def recv_cb(e):
             print("[ADMIN] Message from Gate Guard:", msg)
             if msg[0] == 0x0C:  # time sync request
                 print("[ADMIN] Gate Guard requested time sync")
-                response = b"\x0c" + struct.pack("d", get_local_time_s())
+                response = b"\x0c" + struct.pack("I", get_local_time_s())
                 e.send(GATE_GUARD_MAC, response)
                 print("[ADMIN] Sent time:", get_local_time())
+                print("[ADMIN] Sent time (s):", get_local_time_s())
             else:
                 print("[ADMIN] Unknown message:", msg)
 
@@ -107,6 +101,6 @@ timer = Timer(0)
 timer.init(period=60000, mode=Timer.PERIODIC, callback=weekly_resync)
 
 
-# Keep alive
-while True:
-    time.sleep(1)
+# # Keep alive
+# while True:
+#     time.sleep(1)
