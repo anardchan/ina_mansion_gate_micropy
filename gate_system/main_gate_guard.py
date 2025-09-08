@@ -1,4 +1,5 @@
 import espnow  # type: ignore
+import network
 import time
 import struct
 import json
@@ -298,6 +299,13 @@ def validate_card(uid, source_mac):
     return False, ERR_NOT_FOUND
 
 # ---- ESP-NOW ----
+
+# A WLAN interface must be active to send()/recv()
+sta = network.WLAN(network.WLAN.IF_STA)  # Or network.WLAN.IF_AP
+sta.active(True)
+sta.config(channel = 11)
+sta.disconnect() 
+
 e = espnow.ESPNow()
 e.active(True)
 # Add peers we expect to communicate with (best-effort)
@@ -335,7 +343,7 @@ def recv_cb(e):
         # Time sync response from admin
         if mac == ADMIN_MAC and msg and msg[0] == 0x0C:
             try:
-                received_time = struct.unpack("d", msg[1:])[0]
+                received_time = struct.unpack("I", msg[1:])[0]
                 local_time_offset = received_time - (time.time() + UTC_OFFSET)
                 print(f"[GATE GUARD] ✅ Time updated from Admin: {get_local_time()}")
                 log_access("Time sync from admin")
@@ -443,7 +451,7 @@ maintenance_timer.init(period=60000, mode=Timer.PERIODIC, callback=expire_cards)
 
 
 # ---- MAIN LOOP (heartbeat) ----
-while True:
-    # heartbeat, irq and timers handle real work
-    time.sleep(1)
+# while True:
+#     # heartbeat, irq and timers handle real work
+#     time.sleep(1)
     
