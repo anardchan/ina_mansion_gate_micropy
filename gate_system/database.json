@@ -1,11 +1,28 @@
 {
-    "monthly": {
-        "0x72933103": { "expiration_date": [2024, 12, 31] }
-    },
-    "daily": {
-        "ID654321": { "expiration_date": [2026, 12, 31] }
-    },
-    "single_entry": {
-        "ID111111": { "expiration_date": [2024, 12, 31] }
+  "monthly": {
+    "UID_M123": {
+      "activation_time": "2025-08-01 08:00:00",
+      "expiration_time": "2025-09-01 08:00:00",
+      "io_status": "out",
+      "status": "active"
     }
+  },
+  "daily": {
+    "UID_D456": {
+      "activation_time": "2025-09-07 06:30:00",
+      "expiration_time": "2025-09-08 06:30:00",
+      "io_status": "out",
+      "status": "active"
+    }
+  },
+  "single_entry": {
+    "UID_S789": {
+      "entry_time": "2025-09-07 14:03:12",
+      "exit_time": "2025-09-07 14:45:01",
+      "expiration_time": "2025-09-07 15:05:01",
+      "price": 50,
+      "io_status": "out",
+      "status": "completed"
+    }
+  }
 }
