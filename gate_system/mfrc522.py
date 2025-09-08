@@ -16,7 +16,6 @@ from os import uname
 | cs   | 15          | 5           |
 +------+-------------+-------------+
 
-If ESP32 is used, the SPI pins can be configured to use SPI 1 automatically.
 """
 
 class MFRC522:
@@ -32,8 +31,12 @@ class MFRC522:
 
 	def __init__(self, rst, cs, sck=None, mosi=None, miso=None):
 
-		self.rst = Pin(25, Pin.OUT)  # Initialize RST pin
-		self.cs = Pin(27, Pin.OUT)  # Initialize CS pin
+		# self.rst = Pin(25, Pin.OUT)  # Initialize RST pin
+		# self.cs = Pin(27, Pin.OUT)  # Initialize CS pin
+
+		"""Initialize MFRC522 with given RST and CS pins (esp32 only)."""
+		self.rst = Pin(rst, Pin.OUT)
+		self.cs = Pin(cs, Pin.OUT)
 		
 		self.sck = Pin(sck, Pin.OUT) if sck is not None else None
 		self.mosi = Pin(mosi, Pin.OUT) if mosi is not None else None 	
