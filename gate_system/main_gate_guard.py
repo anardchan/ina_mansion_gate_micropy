@@ -211,7 +211,7 @@ def validate_card(uid, source_mac):
     # Find card in DB
     found_card = None
     card_type = None
-    for ctype in ("monthly", "daily", "single_entry"):
+    for ctype in ("admin", "monthly", "daily", "single_entry"):
         if uid in db.get(ctype, {}):
             found_card = db[ctype][uid]
             card_type = ctype
@@ -220,6 +220,11 @@ def validate_card(uid, source_mac):
     if not found_card:
         log_access(f"UID {uid} denied — not found", err_code=ERR_NOT_FOUND)
         return False, ERR_NOT_FOUND
+    
+    # Admin card behavior
+    if card_type in ("admin"):
+        log_access(f"UID {uid} approved (admin)")
+        return True, ERR_SUCCESS
 
     # Automatic expiration check: if status is expired, deny
     if found_card.get("status") == "expired":
@@ -413,9 +418,9 @@ log_access("Boot time synchronized")
 
 # Debug dump of DB (print top-level counts)
 db = load_db()
-print("[DB] Summary: monthly=%d, daily=%d, single_entry=%d" % (
-    len(db.get("monthly", {})), len(db.get("daily", {})), len(db.get("single_entry", {}))))
-log_access(f"DB summary: monthly={len(db.get('monthly', {}))}, daily={len(db.get('daily', {}))}, single_entry={len(db.get('single_entry', {}))}")
+print("[DB] Summary: admin=%d, monthly=%d, daily=%d, single_entry=%d" % (
+    len(db.get("admin", {})), len(db.get("monthly", {})), len(db.get("daily", {})), len(db.get("single_entry", {}))))
+log_access(f"DB summary: admin={len(db.get('admin', {}))}, monthly={len(db.get('monthly', {}))}, daily={len(db.get('daily', {}))}, single_entry={len(db.get('single_entry', {}))}")
 
 # ---- WEEKLY RESYNC (best-effort) ----
 def weekly_resync(timer):
