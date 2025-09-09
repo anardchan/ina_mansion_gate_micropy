@@ -243,8 +243,31 @@ def validate_card(uid, source_mac):
             log_access(f"UID {uid} denied — expired", err_code=ERR_EXPIRED)
         return False, ERR_EXPIRED
 
-    # Monthly / Daily behavior
-    if card_type in ("monthly", "daily"):
+    # Monthly behavior
+    if card_type in ("monthly"):
+        if found_card.get("status") == "new":
+            # Set the initial io_status
+            found_card["io_status"] = direction
+            found_card["status"] = "active"
+            log_access(f"UID {uid} new. Set initial io_status ({direction})")
+            log_access(f"UID {uid}. Set status to active")
+        else:
+            # io_status holds last action; incoming request must be opposite
+            last_io = found_card.get("io_status")
+            if last_io == direction:
+                # same direction twice -> denied
+                log_access(f"UID {uid} denied — wrong direction ({direction})", err_code=ERR_WRONG_DIRECTION)
+                return False, ERR_WRONG_DIRECTION
+            else:
+                # Flip io_status
+                found_card["io_status"] = direction
+        # Approve
+        save_db(db)
+        log_access(f"UID {uid} approved ({card_type}, {direction})")
+        return True, ERR_SUCCESS
+    
+    # Daily behavior
+    if card_type in ("daily"):
         # io_status holds last action; incoming request must be opposite
         last_io = found_card.get("io_status")
         if last_io == direction:
@@ -425,6 +448,56 @@ def recv_cb(e):
                     print("[GATE GUARD] Failed to send denial:", ex)
                 # Also include error description in the log (validate_card already logged)
                 print(f"[GATE GUARD] Decision: DENIED err=0x{err:02X} - {ERROR_DESCRIPTIONS.get(err,'?')}")
+
+        # Admin: Check if UID exists
+        elif mac == ADMIN_MAC and msg and msg[0] == 0x20:
+            try:
+                print(f"msg : {msg}")
+                print(f"msg_hex : {msg.hex()}")
+                uid = msg[1:].decode()
+                print(f"Admin: Check if UID {uid} exists")
+                db = load_db()
+                exists = any(uid in db[ctype] for ctype in ("admin", "monthly", "daily", "single_entry"))
+                if exists:
+                    e.send(ADMIN_MAC, b"\x21\x01")
+                    log_access(f"Admin checked UID {uid}: already exists")
+                else:
+                    e.send(ADMIN_MAC, b"\x21\x00")
+                    log_access(f"Admin checked UID {uid}: not found.")
+            except Exception as ex:
+                print("[GATE GUARD] UID check failed:", ex)
+
+        # Admin: Register monthly card
+        elif mac == ADMIN_MAC and msg and msg[0] == 0x22:
+            try:
+                print(f"msg : {msg}")
+                print(f"msg_hex : {msg.hex()}")
+                payload = msg[1:].decode()
+                print(f"payload : {payload}")
+                card_data = json.loads(payload)
+                print(f"card_data : {card_data}")
+                db = load_db()
+                uid = card_data["uid"]
+                db["monthly"][uid]  = {
+                    "activation_time": card_data["activation_time"],
+                    "expiration_time": card_data["expiration_time"],
+                    "io_status": "out", 
+                    "status": "new"
+                }
+                save_db(db)
+                e.send(ADMIN_MAC, b"\x23\x00")
+                log_access(f"UID {uid} registered (monthly)")
+            except Exception as ex:
+                print("[GATE GUARD] Register monthly failed:", ex)
+                try:
+                    e.send(ADMIN_MAC, b"\x23\x01")
+                except:
+                    pass
+                log_access("Register monthly failed", err_code=ERR_NOT_FOUND)
+        
+        # TODO: 0x24 daily registration
+        # TODO: 0x26 single_entry registration
+
         else:
             print("[GATE GUARD] ❓ Unknown message or source:", mac, msg)
 
