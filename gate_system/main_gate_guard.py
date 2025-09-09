@@ -8,7 +8,7 @@ from machine import Timer
 from config import (
     ADMIN_MAC, MAX_LOG_LINES, INSIDE_READER_MAC, OUTSIDE_READER_MAC,
     UTC_OFFSET, DAILY_RATE_PHP, SINGLE_ENTRY_RATE_FIRST_HOURS,
-    SINGLE_ENTRY_FIRST_HOURS_DURATION, SINGLE_ENTRY_EXTRA_HOUR_RATE
+    SINGLE_ENTRY_FIRST_HOURS_DURATION, SINGLE_ENTRY_EXTRA_HOUR_RATE, GRACE_MINS
 )
 
 # ---- FILES ----
@@ -34,7 +34,7 @@ ERROR_DESCRIPTIONS = {
     ERR_ALREADY_USED: "Already used",
     ERR_NOT_IN_PROGRESS: "Not in progress (no entry recorded)",
     ERR_GRACE_EXPIRED: "Grace period expired",
-    ERR_PAYMENT_PROCESSED: "Payment processed — grace period started (20 min)",
+    ERR_PAYMENT_PROCESSED: f"Payment processed — grace period started ({GRACE_MINS} min)",
     ERR_UNKNOWN_READER: "Unknown reader MAC"
 }
 
@@ -184,7 +184,7 @@ def complete_single_entry(uid):
         price = SINGLE_ENTRY_RATE_FIRST_HOURS + extra_h * SINGLE_ENTRY_EXTRA_HOUR_RATE
 
     card["exit_time"] = readable_now
-    card["expiration_time"] = format_time(pay_time + (20 * 60))  # 20-minute grace
+    card["expiration_time"] = format_time(pay_time + (GRACE_MINS * 60))
     card["price"] = price
     card["status"] = "paid"
     save_db(db)
@@ -237,7 +237,11 @@ def validate_card(uid, source_mac):
 
     # Automatic expiration check: if status is expired, deny
     if found_card.get("status") == "expired":
-        log_access(f"UID {uid} denied — expired", err_code=ERR_EXPIRED)
+        if card_type == "single_entry":
+            log_access(f"UID {uid} denied — grace period expired", err_code=ERR_GRACE_EXPIRED)
+            log_access(f"UID {uid} details. Time paid: {found_card["exit_time"]} . Valid unitl: {found_card["expiration_time"]}")
+        else:
+            log_access(f"UID {uid} denied — expired", err_code=ERR_EXPIRED)
         return False, ERR_EXPIRED
 
     # Monthly / Daily behavior
