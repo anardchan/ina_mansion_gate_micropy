@@ -160,7 +160,16 @@ def complete_single_entry(uid):
 
     # entry_time must exist (in_progress)
     try:
-        entry_s = time.mktime(time.strptime(card["entry_time"], "%Y-%m-%d %H:%M:%S"))
+        # Split date and time
+        date_str, time_str = card["entry_time"].split(" ")
+        year, month, day = map(int, date_str.split("-"))
+        hour, minute, second = map(int, time_str.split(":"))
+        # Build the full 8-tuple required by mktime
+        # (year, month, mday, hour, minute, second, weekday, yearday)
+        # weekday (-1) and yearday (-1) can be placeholders in MicroPython
+        tm_tuple = (year, month, day, hour, minute, second, -1, -1)
+
+        entry_s = time.mktime(tm_tuple)
     except Exception:
         # fallback if entry_time missing/invalid
         entry_s = pay_time
@@ -284,7 +293,15 @@ def validate_card(uid, source_mac):
                     return False, ERR_GRACE_EXPIRED
 
                 try:
-                    exp_s = time.mktime(time.strptime(exp_str, "%Y-%m-%d %H:%M:%S"))
+                    # Split date and time
+                    date_str, time_str = exp_str.split(" ")
+                    year, month, day = map(int, date_str.split("-"))
+                    hour, minute, second = map(int, time_str.split(":"))
+                    # Build the full 8-tuple required by mktime
+                    # (year, month, mday, hour, minute, second, weekday, yearday)
+                    # weekday (-1) and yearday (-1) can be placeholders in MicroPython
+                    tm_tuple = (year, month, day, hour, minute, second, -1, -1)
+                    exp_s = time.mktime(tm_tuple)
                 except Exception:
                     # bad format -> expire
                     found_card["status"] = "expired"
@@ -443,7 +460,16 @@ def expire_cards(timer):
         exp_str = card.get("expiration_time")
         if exp_str:
             try:
-                exp_s = time.mktime(time.strptime(exp_str, "%Y-%m-%d %H:%M:%S"))
+                # Split date and time
+                date_str, time_str = exp_str.split(" ")
+                year, month, day = map(int, date_str.split("-"))
+                hour, minute, second = map(int, time_str.split(":"))
+                # Build the full 8-tuple required by mktime
+                # (year, month, mday, hour, minute, second, weekday, yearday)
+                # weekday (-1) and yearday (-1) can be placeholders in MicroPython
+                tm_tuple = (year, month, day, hour, minute, second, -1, -1)
+
+                exp_s = time.mktime(tm_tuple)
                 if now >= exp_s and card.get("status") != "expired":
                     card["status"] = "expired"
                     log_access(f"UID {uid} auto-expired (monthly)", err_code=ERR_EXPIRED)
@@ -457,7 +483,16 @@ def expire_cards(timer):
         exp_str = card.get("expiration_time")
         if exp_str:
             try:
-                exp_s = time.mktime(time.strptime(exp_str, "%Y-%m-%d %H:%M:%S"))
+                # Split date and time
+                date_str, time_str = exp_str.split(" ")
+                year, month, day = map(int, date_str.split("-"))
+                hour, minute, second = map(int, time_str.split(":"))
+                # Build the full 8-tuple required by mktime
+                # (year, month, mday, hour, minute, second, weekday, yearday)
+                # weekday (-1) and yearday (-1) can be placeholders in MicroPython
+                tm_tuple = (year, month, day, hour, minute, second, -1, -1)
+
+                exp_s = time.mktime(tm_tuple)
                 if now >= exp_s and card.get("status") != "expired":
                     card["status"] = "expired"
                     log_access(f"UID {uid} auto-expired (daily)", err_code=ERR_EXPIRED)
