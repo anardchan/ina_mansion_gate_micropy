@@ -6,7 +6,7 @@ import json
 import os
 from machine import Timer
 from config import (
-    ADMIN_MAC, GATE_GUARD_MAC, INSIDE_READER_MAC, OUTSIDE_READER_MAC,
+    ADMIN_MAC, MAX_LOG_LINES, INSIDE_READER_MAC, OUTSIDE_READER_MAC,
     UTC_OFFSET, DAILY_RATE_PHP, SINGLE_ENTRY_RATE_FIRST_HOURS,
     SINGLE_ENTRY_FIRST_HOURS_DURATION, SINGLE_ENTRY_EXTRA_HOUR_RATE
 )
@@ -102,13 +102,30 @@ def ensure_logs_dir():
         # ignore if it already exists or cannot create
         pass
 
+def trim_log_file():
+    """
+    Keep only the last MAX_LOG_LINES lines in the log file.
+    Called before appending a new entry.
+    """
+    try:
+        with open(LOG_FILE, "r") as f:
+            lines = f.readlines()
+        if len(lines) > MAX_LOG_LINES:
+            # Keep only the last MAX_LOG_LINES lines
+            lines = lines[-MAX_LOG_LINES:]
+            with open(LOG_FILE, "w") as f:
+                f.writelines(lines)
+    except OSError:
+        # file doesn't exist yet
+        pass
 
 def log_access(message, err_code=None):
     """
     Append human-readable guard-style log entry.
     If err_code provided, include description.
     """
-    ensure_logs_dir()
+    ensure_logs_dir()  # ensure log file exists
+    trim_log_file()  # ensure rolling log
     if err_code is not None:
         desc = ERROR_DESCRIPTIONS.get(err_code, "Unknown error")
         entry = f"{message} (err=0x{err_code:02X} - {desc})"
