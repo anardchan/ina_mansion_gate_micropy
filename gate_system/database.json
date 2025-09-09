@@ -1,8 +1,25 @@
 {
+  "admin": {
+    "0x534AC313C9": {
+      "is_admin": true
+    },
+    "0xA385C413F1": {
+      "is_admin": true
+    },
+    "0x11EBFD0007": {
+      "is_admin": true
+    }
+  },
   "monthly": {
-    "UID_M123": {
+    "0x43EA1AD86B": {
       "activation_time": "2025-08-01 08:00:00",
-      "expiration_time": "2025-09-01 08:00:00",
+      "expiration_time": "2029-09-01 08:00:00",
+      "io_status": "out",
+      "status": "active"
+    },
+    "0x23D41CD833": {
+      "activation_time": "2025-08-01 08:00:00",
+      "expiration_time": "2025-09-09 11:00:00",
       "io_status": "out",
       "status": "active"
     }
@@ -13,16 +30,28 @@
       "expiration_time": "2025-09-08 06:30:00",
       "io_status": "out",
       "status": "active"
+    },
+    "0x72933103D3": {
+      "activation_time": "2025-09-07 06:30:00",
+      "expiration_time": "2025-09-08 06:30:00",
+      "io_status": "out",
+      "status": "active"
+    },
+    "0x2332202819": {
+      "activation_time": "2025-09-07 06:30:00",
+      "expiration_time": "2025-09-08 06:30:00",
+      "io_status": "out",
+      "status": "active"
     }
   },
   "single_entry": {
-    "UID_S789": {
+    "0xC25CE4007A": {
       "entry_time": "2025-09-07 14:03:12",
       "exit_time": "2025-09-07 14:45:01",
       "expiration_time": "2025-09-07 15:05:01",
       "price": 50,
       "io_status": "out",
-      "status": "completed"
+      "status": "new"
     }
   }
 }
