@@ -201,7 +201,6 @@ def validate_card(uid, source_mac):
       - If approved True, err_code == ERR_SUCCESS.
       - If not approved, err_code explains why (see ERROR_DESCRIPTIONS).
     """
-
     db = load_db()
     now = get_local_time_s()
     readable_now = format_time(now)
@@ -319,6 +318,15 @@ def validate_card(uid, source_mac):
                     found_card["io_status"] = "out"
                     save_db(db)
                     log_access(f"UID {uid} approved — exited within grace period")
+
+                    # --- delete card from database ---
+                    try:
+                        del db[ctype][uid]
+                        save_db(db)
+                        log_access(f"UID {uid} deleted from database after exit")
+                    except KeyError:
+                        log_access(f"UID {uid} not found in database for deletion")
+
                     return True, ERR_SUCCESS
                 else:
                     # grace expired
