@@ -10,6 +10,29 @@ from config import GATE_GUARD_MAC, BENINCA_HEAD_MAC
 RST_PIN = 25
 CS_PIN = 27
 
+# ---- ERROR CODES (constants) ----
+ERR_SUCCESS = 0x00
+ERR_NOT_FOUND = 0x01
+ERR_EXPIRED = 0x02
+ERR_WRONG_DIRECTION = 0x03
+ERR_ALREADY_USED = 0x04
+ERR_NOT_IN_PROGRESS = 0x05
+ERR_GRACE_EXPIRED = 0x06
+ERR_PAYMENT_PROCESSED = 0x07
+ERR_UNKNOWN_READER = 0x08
+
+ERROR_DESCRIPTIONS = {
+    ERR_SUCCESS: "ERR_SUCCESS",
+    ERR_NOT_FOUND: "CARD_NOT_FOUND",
+    ERR_EXPIRED: "CARD_EXPIRED",
+    ERR_WRONG_DIRECTION: "WRONG_WAY",
+    ERR_ALREADY_USED: "ALREADY_USED",
+    ERR_NOT_IN_PROGRESS: "NOT_IN_PROGRESS",
+    ERR_GRACE_EXPIRED: "GRACE_EXPIRED",
+    ERR_PAYMENT_PROCESSED: "PAYMENT_PROCESSED",
+    ERR_UNKNOWN_READER: "ERR_UNKNOWN_READER"
+}
+
 # --- Init OLED (I2C0 defaults: sda=21, scl=22 on ESP32) ---
 i2c = I2C(0)
 oled = SSD1306_I2C(128, 64, i2c)
@@ -29,6 +52,7 @@ rfid = MFRC522(RST_PIN, CS_PIN)
 # --- Init ESP-NOW ---
 w0 = network.WLAN(network.STA_IF)
 w0.active(True)
+w0.config(channel = 11)
 w0.disconnect()
 
 e = espnow.ESPNow()
@@ -77,8 +101,10 @@ def main():
         elif msg[0] == 0x11 and msg[1] == 0x00:
             # Access denied
             reason = msg[2] if len(msg) > 2 else 0xFF
+            reason_str = ERROR_DESCRIPTIONS.get(reason, f"0x{reason:02X}")
             print(f"[READER] ❌ Access denied, reason=0x{reason:02X}")
-            show_lines(["Access Denied", f"Error {reason:02X}"], hold=3)
+            print(f"[READER] ❌ Access denied, reason={reason_str}")
+            show_lines(["Access Denied", "Error", f"{reason_str}"], hold=3)
         else:
             print(f"[READER] ❓ Unknown response: {msg}")
             show_lines(["Unknown response"], hold=3)
