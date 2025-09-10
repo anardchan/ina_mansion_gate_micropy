@@ -6,9 +6,16 @@ import json
 import os
 from machine import Timer
 from config import (
-    ADMIN_MAC, MAX_LOG_LINES, INSIDE_READER_MAC, OUTSIDE_READER_MAC,
-    UTC_OFFSET, DAILY_RATE_PHP, SINGLE_ENTRY_RATE_FIRST_HOURS,
-    SINGLE_ENTRY_FIRST_HOURS_DURATION, SINGLE_ENTRY_EXTRA_HOUR_RATE, GRACE_MINS
+    ADMIN_MAC,
+    MAX_LOG_LINES,
+    INSIDE_READER_MAC,
+    OUTSIDE_READER_MAC,
+    UTC_OFFSET,
+    DAILY_RATE_PHP,
+    SINGLE_ENTRY_RATE_FIRST_HOURS,
+    SINGLE_ENTRY_FIRST_HOURS_DURATION,
+    SINGLE_ENTRY_EXTRA_HOUR_RATE,
+    GRACE_MINS,
 )
 
 # ---- FILES ----
@@ -35,11 +42,12 @@ ERROR_DESCRIPTIONS = {
     ERR_NOT_IN_PROGRESS: "Not in progress (no entry recorded)",
     ERR_GRACE_EXPIRED: "Grace period expired",
     ERR_PAYMENT_PROCESSED: f"Payment processed — grace period started ({GRACE_MINS} min)",
-    ERR_UNKNOWN_READER: "Unknown reader MAC"
+    ERR_UNKNOWN_READER: "Unknown reader MAC",
 }
 
 # ---- GLOBAL STATE ----
 local_time_offset = None  # correction offset from board RTC to synced local time
+
 
 # ---- TIME HELPERS ----
 def get_local_time_s():
@@ -61,6 +69,7 @@ def format_time(ts=None):
     # Use time.localtime to get tuple, then format
     y, m, d, hh, mm, ss, _, _ = time.localtime(ts)
     return f"{y:04d}-{m:02d}-{d:02d} {hh:02d}:{mm:02d}:{ss:02d}"
+
 
 # ---- DATABASE HANDLERS ----
 def init_db():
@@ -93,6 +102,7 @@ def save_db(db):
     except Exception as e:
         print("[DB] Error saving DB:", e)
 
+
 # ---- LOGGING ----
 def ensure_logs_dir():
     try:
@@ -101,6 +111,7 @@ def ensure_logs_dir():
     except Exception:
         # ignore if it already exists or cannot create
         pass
+
 
 def trim_log_file():
     """
@@ -118,6 +129,7 @@ def trim_log_file():
     except OSError:
         # file doesn't exist yet
         pass
+
 
 def log_access(message, err_code=None):
     """
@@ -188,9 +200,14 @@ def complete_single_entry(uid):
     card["price"] = price
     card["status"] = "paid"
     save_db(db)
-    print(f"[BILL] UID {uid} payment recorded. Price={price}, grace until {card['expiration_time']}")
-    log_access(f"UID {uid} payment processed — Price={price}", err_code=ERR_PAYMENT_PROCESSED)
+    print(
+        f"[BILL] UID {uid} payment recorded. Price={price}, grace until {card['expiration_time']}"
+    )
+    log_access(
+        f"UID {uid} payment processed — Price={price}", err_code=ERR_PAYMENT_PROCESSED
+    )
     return price
+
 
 # ---- VALIDATION / ACCESS LOGIC ----
 def validate_card(uid, source_mac):
@@ -213,7 +230,10 @@ def validate_card(uid, source_mac):
     else:
         # Unknown reader
         print("[GATE GUARD] Unknown reader MAC:", source_mac)
-        log_access(f"UID {uid} denied — unknown reader {source_mac}", err_code=ERR_UNKNOWN_READER)
+        log_access(
+            f"UID {uid} denied — unknown reader {source_mac}",
+            err_code=ERR_UNKNOWN_READER,
+        )
         return False, ERR_UNKNOWN_READER
 
     # Find card in DB
@@ -228,7 +248,7 @@ def validate_card(uid, source_mac):
     if not found_card:
         log_access(f"UID {uid} denied — not found", err_code=ERR_NOT_FOUND)
         return False, ERR_NOT_FOUND
-    
+
     # Admin card behavior
     if card_type in ("admin"):
         log_access(f"UID {uid} approved (admin)")
@@ -237,8 +257,12 @@ def validate_card(uid, source_mac):
     # Automatic expiration check: if status is expired, deny
     if found_card.get("status") == "expired":
         if card_type == "single_entry":
-            log_access(f"UID {uid} denied — grace period expired", err_code=ERR_GRACE_EXPIRED)
-            log_access(f"UID {uid} details. Time paid: {found_card["exit_time"]} . Valid unitl: {found_card["expiration_time"]}")
+            log_access(
+                f"UID {uid} denied — grace period expired", err_code=ERR_GRACE_EXPIRED
+            )
+            log_access(
+                f"UID {uid} details. Time paid: {found_card['exit_time']} . Valid unitl: {found_card['expiration_time']}"
+            )
         else:
             log_access(f"UID {uid} denied — expired", err_code=ERR_EXPIRED)
         return False, ERR_EXPIRED
@@ -256,7 +280,10 @@ def validate_card(uid, source_mac):
             last_io = found_card.get("io_status")
             if last_io == direction:
                 # same direction twice -> denied
-                log_access(f"UID {uid} denied — wrong direction ({direction})", err_code=ERR_WRONG_DIRECTION)
+                log_access(
+                    f"UID {uid} denied — wrong direction ({direction})",
+                    err_code=ERR_WRONG_DIRECTION,
+                )
                 return False, ERR_WRONG_DIRECTION
             else:
                 # Flip io_status
@@ -265,14 +292,17 @@ def validate_card(uid, source_mac):
         save_db(db)
         log_access(f"UID {uid} approved ({card_type}, {direction})")
         return True, ERR_SUCCESS
-    
+
     # Daily behavior
     if card_type in ("daily"):
         # io_status holds last action; incoming request must be opposite
         last_io = found_card.get("io_status")
         if last_io == direction:
             # same direction twice -> denied
-            log_access(f"UID {uid} denied — wrong direction ({direction})", err_code=ERR_WRONG_DIRECTION)
+            log_access(
+                f"UID {uid} denied — wrong direction ({direction})",
+                err_code=ERR_WRONG_DIRECTION,
+            )
             return False, ERR_WRONG_DIRECTION
         # Approve and flip io_status
         found_card["io_status"] = direction
@@ -296,7 +326,9 @@ def validate_card(uid, source_mac):
                 return True, ERR_SUCCESS
             else:
                 # Already used / in_progress / paid / completed -> deny
-                log_access(f"UID {uid} denied — already used", err_code=ERR_ALREADY_USED)
+                log_access(
+                    f"UID {uid} denied — already used", err_code=ERR_ALREADY_USED
+                )
                 return False, ERR_ALREADY_USED
 
         # OUT path: several possibilities
@@ -315,7 +347,10 @@ def validate_card(uid, source_mac):
                     # malformed: treat as expired
                     found_card["status"] = "expired"
                     save_db(db)
-                    log_access(f"UID {uid} denied — grace info missing", err_code=ERR_GRACE_EXPIRED)
+                    log_access(
+                        f"UID {uid} denied — grace info missing",
+                        err_code=ERR_GRACE_EXPIRED,
+                    )
                     return False, ERR_GRACE_EXPIRED
 
                 try:
@@ -332,7 +367,10 @@ def validate_card(uid, source_mac):
                     # bad format -> expire
                     found_card["status"] = "expired"
                     save_db(db)
-                    log_access(f"UID {uid} denied — grace parse error", err_code=ERR_GRACE_EXPIRED)
+                    log_access(
+                        f"UID {uid} denied — grace parse error",
+                        err_code=ERR_GRACE_EXPIRED,
+                    )
                     return False, ERR_GRACE_EXPIRED
 
                 if now <= exp_s:
@@ -355,30 +393,38 @@ def validate_card(uid, source_mac):
                     # grace expired
                     found_card["status"] = "expired"
                     save_db(db)
-                    log_access(f"UID {uid} denied — grace period expired", err_code=ERR_GRACE_EXPIRED)
+                    log_access(
+                        f"UID {uid} denied — grace period expired",
+                        err_code=ERR_GRACE_EXPIRED,
+                    )
                     return False, ERR_GRACE_EXPIRED
 
             elif status == "completed":
                 # already finished
-                log_access(f"UID {uid} denied — already completed", err_code=ERR_ALREADY_USED)
+                log_access(
+                    f"UID {uid} denied — already completed", err_code=ERR_ALREADY_USED
+                )
                 return False, ERR_ALREADY_USED
 
             else:
                 # status is 'new' or others (not in_progress and not paid)
-                log_access(f"UID {uid} denied — not in progress", err_code=ERR_NOT_IN_PROGRESS)
+                log_access(
+                    f"UID {uid} denied — not in progress", err_code=ERR_NOT_IN_PROGRESS
+                )
                 return False, ERR_NOT_IN_PROGRESS
 
     # Fallback deny
     log_access(f"UID {uid} denied — unknown condition", err_code=ERR_NOT_FOUND)
     return False, ERR_NOT_FOUND
 
+
 # ---- ESP-NOW ----
 
 # A WLAN interface must be active to send()/recv()
 sta = network.WLAN(network.WLAN.IF_STA)  # Or network.WLAN.IF_AP
 sta.active(True)
-sta.config(channel = 11)
-sta.disconnect() 
+sta.config(channel=11)
+sta.disconnect()
 
 e = espnow.ESPNow()
 e.active(True)
@@ -404,6 +450,31 @@ def request_time_from_admin():
         e.send(ADMIN_MAC, b"\x0c")
     except Exception as ex:
         print("[GATE GUARD] Failed to send time request:", ex)
+
+
+def handle_delete_request(mac, msg):
+    """Handle delete request from Admin Board."""
+    try:
+        uid = msg[1:].decode()
+        log_access(f"[GATE_GUARD] 🗑️ Delete request for UID={uid}")
+
+        found = False
+        for section in ["admin", "monthly", "daily", "single_entry"]:
+            if uid in db.get(section, {}):
+                del db[section][uid]
+                save_db(db)
+                log_access(f"[GATE_GUARD] ✅ UID {uid} deleted from {section}.")
+                e.send(mac, b"\x25\x00")  # success deletion
+                found = True
+                break
+
+        if not found:
+            log_access(f"[GATE_GUARD] ❌ UID {uid} not found in DB.")
+            e.send(mac, b"\x25\x01")  # Card not found
+
+    except Exception as err:
+        log_access(f"[GATE_GUARD] ⚠️ Error handling delete: {err}")
+        e.send(mac, b"\x25\x02")  # generic error
 
 
 def recv_cb(e):
@@ -447,7 +518,9 @@ def recv_cb(e):
                 except Exception as ex:
                     print("[GATE GUARD] Failed to send denial:", ex)
                 # Also include error description in the log (validate_card already logged)
-                print(f"[GATE GUARD] Decision: DENIED err=0x{err:02X} - {ERROR_DESCRIPTIONS.get(err,'?')}")
+                print(
+                    f"[GATE GUARD] Decision: DENIED err=0x{err:02X} - {ERROR_DESCRIPTIONS.get(err, '?')}"
+                )
 
         # Admin: Check if UID exists
         elif mac == ADMIN_MAC and msg and msg[0] == 0x20:
@@ -457,7 +530,10 @@ def recv_cb(e):
                 uid = msg[1:].decode()
                 print(f"Admin: Check if UID {uid} exists")
                 db = load_db()
-                exists = any(uid in db[ctype] for ctype in ("admin", "monthly", "daily", "single_entry"))
+                exists = any(
+                    uid in db[ctype]
+                    for ctype in ("admin", "monthly", "daily", "single_entry")
+                )
                 if exists:
                     e.send(ADMIN_MAC, b"\x21\x01")
                     log_access(f"Admin checked UID {uid}: already exists")
@@ -478,11 +554,11 @@ def recv_cb(e):
                 print(f"card_data : {card_data}")
                 db = load_db()
                 uid = card_data["uid"]
-                db["monthly"][uid]  = {
+                db["monthly"][uid] = {
                     "activation_time": card_data["activation_time"],
                     "expiration_time": card_data["expiration_time"],
-                    "io_status": "out", 
-                    "status": "new"
+                    "io_status": "out",
+                    "status": "new",
                 }
                 save_db(db)
                 e.send(ADMIN_MAC, b"\x23\x00")
@@ -494,9 +570,12 @@ def recv_cb(e):
                 except:
                     pass
                 log_access("Register monthly failed", err_code=ERR_NOT_FOUND)
-        
+
         # TODO: 0x24 daily registration
         # TODO: 0x26 single_entry registration
+
+        elif mac == ADMIN_MAC and msg and msg[0] == 0x24:  # Delete request
+            handle_delete_request(mac, msg)
 
         else:
             print("[GATE GUARD] ❓ Unknown message or source:", mac, msg)
@@ -520,9 +599,19 @@ log_access("Boot time synchronized")
 
 # Debug dump of DB (print top-level counts)
 db = load_db()
-print("[DB] Summary: admin=%d, monthly=%d, daily=%d, single_entry=%d" % (
-    len(db.get("admin", {})), len(db.get("monthly", {})), len(db.get("daily", {})), len(db.get("single_entry", {}))))
-log_access(f"DB summary: admin={len(db.get('admin', {}))}, monthly={len(db.get('monthly', {}))}, daily={len(db.get('daily', {}))}, single_entry={len(db.get('single_entry', {}))}")
+print(
+    "[DB] Summary: admin=%d, monthly=%d, daily=%d, single_entry=%d"
+    % (
+        len(db.get("admin", {})),
+        len(db.get("monthly", {})),
+        len(db.get("daily", {})),
+        len(db.get("single_entry", {})),
+    )
+)
+log_access(
+    f"DB summary: admin={len(db.get('admin', {}))}, monthly={len(db.get('monthly', {}))}, daily={len(db.get('daily', {}))}, single_entry={len(db.get('single_entry', {}))}"
+)
+
 
 # ---- WEEKLY RESYNC (best-effort) ----
 def weekly_resync(timer):
@@ -531,8 +620,10 @@ def weekly_resync(timer):
     if tm[6] == 6 and tm[3] == 4 and tm[4] == 0:
         request_time_from_admin()
 
+
 weekly_timer = Timer(0)
 weekly_timer.init(period=60000, mode=Timer.PERIODIC, callback=weekly_resync)
+
 
 # ---- PERIODIC MAINTENANCE: expire cards every minute ----
 def expire_cards(timer):
@@ -557,7 +648,9 @@ def expire_cards(timer):
                 exp_s = time.mktime(tm_tuple)
                 if now >= exp_s and card.get("status") != "expired":
                     card["status"] = "expired"
-                    log_access(f"UID {uid} auto-expired (monthly)", err_code=ERR_EXPIRED)
+                    log_access(
+                        f"UID {uid} auto-expired (monthly)", err_code=ERR_EXPIRED
+                    )
                     changed = True
             except Exception:
                 # ignore parse errors
@@ -588,6 +681,7 @@ def expire_cards(timer):
     if changed:
         save_db(db)
 
+
 maintenance_timer = Timer(1)
 maintenance_timer.init(period=60000, mode=Timer.PERIODIC, callback=expire_cards)
 
@@ -596,4 +690,3 @@ maintenance_timer.init(period=60000, mode=Timer.PERIODIC, callback=expire_cards)
 # while True:
 #     # heartbeat, irq and timers handle real work
 #     time.sleep(1)
-    
