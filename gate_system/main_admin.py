@@ -266,6 +266,123 @@ def register_flow():
     #     show_lines(["Register fail", "Try again"], hold=3)
     # ack_and_home()
 
+def delete_flow():
+    """Delete a card from the database via Gate Guard."""
+    show_lines(["Tap card to", "delete..."])
+    uid = wait_for_card()
+
+    if not uid:
+        print("[ADMIN] ❌ No card detected.")
+        user_response = None
+        user_response = prompt_user("No card detected. Try again?", ["Yes", "No"])
+        if user_response == 1:
+            print("[ADMIN] Trying to register card again...")
+            register_flow()
+            return
+        elif user_response == 2:
+            print("[ADMIN] Register card process cancelled.")
+            show_home()
+            return
+        else:
+            print("[ADMIN] Wrong button pressed")
+            show_lines(["Unknown command.", "Try again."], hold=3)
+            show_home()
+            return
+        
+    # Step 1: Check if UID exists
+    try:
+        print("[ADMIN] Asking gate guard if UID exists in database...")
+        e.send(GATE_GUARD_MAC, b"\x20" + uid.encode())
+    except Exception as err:
+        print(f"[ADMIN] Error checking if UID exists. {err}")
+        show_lines(["ID check failed.", "Try again."], hold=3)
+        show_home()
+        return
+    
+    # Wait for reply
+    start = time.ticks_ms()
+    exists = None
+    while time.ticks_diff(time.ticks_ms(), start) < 3000:  # 3s timeout
+        if pending_msgs:
+            mac, msg = pending_msgs.pop(0)
+            if msg[0] == 0x21:  # response to UID check
+                exists = msg[1] == 0x01
+                break
+        time.sleep(0.05)
+    if exists is None:
+        print("[ADMIN] No response from gate guard.")
+        show_lines(["No reply", "from database"], hold=3)
+        show_home()
+        return
+    if exists == 0:
+        print("[ADMIN] Card not registered.")
+        show_lines(["Card not", "registered"], hold=3)
+        show_home()
+        return
+    else:
+        pass  # continue
+    
+    # Step 2: Ask for certain of card should be deleted
+    user_response = None
+    user_response = prompt_user("Card found. Are you sure you want to delete card?", ["Yes", "No"])
+    if user_response == 1:
+        print("[ADMIN] Trying to delete card.")
+        show_lines(["Deleting card", "from database."])
+    elif user_response == 2:
+        print("[ADMIN] Cancelled card deletion.")
+        show_lines(["Card deletion", "cancelled."])
+        show_home()
+        return
+    else:
+        print("[ADMIN] Wrong button pressed")
+        show_lines(["Unknown command.", "Try again."], hold=3)
+        show_home()
+        return
+    
+    # Step 3: Ask the gate guard to delete UID
+    try:
+        print(f"[ADMIN] 📨 Sending delete request for UID={uid}")
+        e.send(GATE_GUARD_MAC, b"\x24" + uid.encode())
+    except Exception as err:
+        print(f"[ADMIN] ⚠️ Error sending delete request: {err}")
+        show_lines(["Delete failed.", "Send error"], hold=3)
+        show_home()
+        return
+    
+    # Wait for reply
+    start = time.ticks_ms()
+    delete_status = None
+    while time.ticks_diff(time.ticks_ms(), start) < 3000:  # 3s timeout
+        if pending_msgs:
+            mac, msg = pending_msgs.pop(0)
+            if msg[0] == 0x25:  # response to UID check
+                delete_status = msg[1]
+                break
+        time.sleep(0.05)
+    if delete_status is None:
+        print("[ADMIN] No response from gate guard.")
+        show_lines(["No reply", "from database"], hold=3)
+        show_home()
+        return
+    if delete_status == 0:
+        print("[ADMIN] Card was said to be deleted.")
+        show_lines(["Card deleted."], hold=3)
+        show_home()
+        return
+    elif delete_status == 1:
+        print("[ADMIN] Card not registered.")
+        show_lines(["Card not", "registered"], hold=3)
+        show_home()
+        return
+    elif exists == 2:
+        print("[ADMIN] Unknown error occured.")
+        show_lines(["Unknown error."], hold=3)
+        show_home()
+        return
+    else:
+        show_home()
+        return
+
 
 # ---- RFID HELPERS ---
 
@@ -382,6 +499,8 @@ def recv_cb(e):
                 show_home()
             elif msg[0] == 0x21: # Guard response to checking if UID exists
                 pending_msgs.append((mac, msg))
+            elif msg[0] == 0x25: # Guard response to UID deletion
+                pending_msgs.append((mac, msg))
             else:
                 print("[ADMIN] ❓ Unknown message:", msg)
                 show_lines(["Unknown msg", str(msg)])
@@ -443,9 +562,7 @@ while True:
             show_lines(["Update (TODO)"], hold=3)
             show_home()
         elif btn_id == 4:
-            # Delete (TODO)
-            show_lines(["Delete (TODO)"], hold=3)
-            show_home()
+            delete_flow()
         else:
             # Unknown: show home
             show_home()
