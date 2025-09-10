@@ -3,6 +3,7 @@ import network  # type: ignore
 import ntptime  # type: ignore
 import time
 import struct
+import json
 from machine import Timer, Pin, I2C  # type: ignore
 from mfrc522 import MFRC522
 from ssd1306 import SSD1306_I2C
@@ -14,6 +15,7 @@ BTN_DEBOUNCE_MS = 500  # debounce window
 i2c = I2C(0)  # default SDA=21, SCL=22 on ESP32
 oled = SSD1306_I2C(128, 64, i2c)
 
+
 def show_lines(lines, hold=2, clear=True):
     """Helper to show multiple lines on OLED."""
     if clear:
@@ -23,45 +25,271 @@ def show_lines(lines, hold=2, clear=True):
     oled.show()
     time.sleep(hold)
 
+
 # --- RFID Setup ---
 RST_PIN = 25
 CS_PIN = 27
 rfid = MFRC522(RST_PIN, CS_PIN)
 
+# --- global mailbox for async messages ---
+pending_msgs = []
+
 # ---- PUSH BUTTONS (GPIO 35, 34, 39, 36) ----
-last_btn_irqs = {35: 0, 34: 0, 39: 0, 36: 0}
+BUTTON_PINS = {35: 1, 34: 2, 39: 3, 36: 4}
+
+last_button_irq = {
+    i: 0 for i in BUTTON_PINS.keys()
+}  # debounce trackers (stores time) {35: 0, 34: 0, 39: 0, 36: 0}
+last_button_pressed = (
+    None  # stores last GPIO number pressed, not the pin ID , example 35/ 34/ 39/ 36
+)
+
 
 def PinId(pin):
+    """Extract integer GPIO number from Pin object."""
     return int(str(pin)[4:6].rstrip(","))
 
-def handle_button_event(pin: Pin):
-    """Debounced button press handler."""
-    global last_btn_irqs
+
+def button_cb(pin):
+    """IRQ callback — debounce and mark which button pressed."""
+    global last_button_pressed
     now = time.ticks_ms()
     pin_num = PinId(pin)
 
-    if time.ticks_diff(now, last_btn_irqs[pin_num]) < BTN_DEBOUNCE_MS:
+    if time.ticks_diff(now, last_button_irq[pin_num]) < BTN_DEBOUNCE_MS:
         return  # ignore bounce
-    last_btn_irqs[pin_num] = now
+    last_button_irq[pin_num] = now
 
-    if pin.value():  # pressed = HIGH
-        btn_map = {35: "Button1", 34: "Button2", 39: "Button3", 36: "Button4"}
-        btn_name = btn_map.get(pin_num, f"Unknown({pin})")
+    if pin.value():  # HIGH = pressed
+        last_button_pressed = pin_num
+        print(f"[ADMIN] 🔘 Button GPIO {pin_num}, ID {BUTTON_PINS[pin_num]} pressed")
 
-        print(f"[ADMIN] 🔘 {btn_name} pressed")
-        show_lines([btn_name, "Pressed"])
 
-# Initialize buttons as interrupt-driven
-btn1 = Pin(35, Pin.IN)
-btn2 = Pin(34, Pin.IN)
-btn3 = Pin(39, Pin.IN)
-btn4 = Pin(36, Pin.IN)
+# Initialize Pin objects with IRQs
+for gpio, b_id in BUTTON_PINS.items():
+    btn = Pin(gpio, Pin.IN)
+    btn.irq(trigger=Pin.IRQ_RISING, handler=button_cb)
 
-for btn in [btn1, btn2, btn3, btn4]:
-    btn.irq(trigger=Pin.IRQ_RISING, handler=handle_button_event)
+# --- Register flow ---
+
+
+def wrap_text(text, width=16):
+    """
+    Word-wrap text into lines of max `width` chars.
+    Splits on spaces so words are not cut awkwardly.
+    Returns a list of strings.
+    """
+    words = text.split(" ")
+    lines, current = [], ""
+
+    for word in words:
+        if len(current) + len(word) + (1 if current else 0) <= width:
+            current += (" " if current else "") + word
+        else:
+            lines.append(current)
+            current = word
+    if current:
+        lines.append(current)
+
+    return lines
+
+
+def prompt_user(title="", options=None, timeout=None):
+    """
+    Display a prompt with dynamic options (1-4), with automatic word wrapping.
+    Blocks until a valid button is pressed, or timeout expires.
+
+    Args:
+        title (str): Optional message/question at the top.
+        options (list[str]): List of up to 4 option strings.
+                             Each option maps to Button1-Button4.
+        timeout (int): Optional timeout in ms. None = no timeout.
+
+    Returns:
+        int|None: Button number pressed (1-4), or None if timeout.
+    """
+    global last_button_pressed
+    if options is None:
+        options = []
+
+    # --- Render UI ---
+    oled.fill(0)
+    line = 0
+
+    # Wrap and print title
+    if title:
+        for wrapped in wrap_text(title):
+            oled.text(wrapped, 0, line)
+            line += 10
+
+    # Wrap and print each option
+    for idx, opt in enumerate(options):
+        prefix = f"[b{idx + 1}] "
+        wrapped_lines = wrap_text(prefix + opt)
+        for w in wrapped_lines:
+            oled.text(w, 0, line)
+            line += 10
+
+    oled.show()
+
+    # --- Wait for input ---
+    start = time.ticks_ms()
+    while True:
+        if last_button_pressed:
+            pressed = last_button_pressed
+            last_button_pressed = None
+            print(f"[ADMIN] promt_user function returns: {BUTTON_PINS[pressed]}")
+            return BUTTON_PINS[pressed]  # Returns the GPIO pin id (1, 2, 3, 4)
+
+        if timeout and time.ticks_diff(time.ticks_ms(), start) > timeout:
+            print("[ADMIN] promt_user function returns None. Timed out")
+            return None
+        time.sleep(0.05)  # 50ms
+
+
+def register_flow():
+    show_lines(["Tap card to", "register..."])
+    uid = wait_for_card()  # blocking read from MFRC522
+    if not uid:
+        print("[ADMIN] Did not find any UID.")
+        user_response = None
+        user_response = prompt_user("No card detected. Try again?", ["Yes", "No"])
+        if user_response == 1:
+            print("[ADMIN] Trying to register card again...")
+            register_flow()
+            return
+        elif user_response == 2:
+            print("[ADMIN] Register card process cancelled.")
+            show_home()
+            return
+        else:
+            print("[ADMIN] Wrong button pressed")
+            show_lines(["Unknown command.", "Try again."], hold=3)
+            show_home()
+            return
+
+    # Step1: check if UID exists
+    try:
+        print("[ADMIN] Asking gate guard if UID exists in database...")
+        e.send(GATE_GUARD_MAC, b"\x20" + uid.encode())
+    except Exception as err:
+        print(f"[ADMIN] Error checking if UID exists. {err}")
+        show_lines(["ID check failed.", "Try again."], hold=3)
+        show_home()
+        return
+    
+    # Wait for reply
+    start = time.ticks_ms()
+    exists = None
+    while time.ticks_diff(time.ticks_ms(), start) < 3000:  # 3s timeout
+        if pending_msgs:
+            mac, msg = pending_msgs.pop(0)
+            if msg[0] == 0x21:  # response to UID check
+                exists = msg[1] == 0x01
+                break
+        time.sleep(0.05)
+    if exists is None:
+        print("[ADMIN] No response from gate guard.")
+        show_lines(["No reply", "from database"], hold=3)
+        show_home()
+        return
+    if exists:
+        print("[ADMIN] Card already registered.")
+        show_lines(["UID already", "registered"], hold=3)
+        show_home()
+        return
+
+    # Step 2: Choose card type
+    user_response = None
+    user_response = prompt_user(
+        "Card type?", ["Monthly", "Daily", "Single Entry", "Cancel"]
+    )
+    if user_response == 1:
+        show_lines(["Cool, you picked", "monthly."])
+        show_home()
+    elif user_response == 2:
+        show_lines(["Not bad, daily."])
+        show_home()
+    elif user_response == 3:
+        show_lines(["Aw single entry"])
+        show_home()
+    else:
+        show_lines(["Cancelled. Returning home"])
+        show_home()
+
+    # Step 3: Process card type registration.
+
+    # Step2: for now only Monthly
+    # show_lines(["Monthly card", "Fee: Php XXX", "Have you", "paid?"], hold=2)
+
+    # # Assume Button1 = Yes, Button2 = No
+    # paid = wait_for_yes_no()
+    # if not paid:
+    #     show_lines(["Payment", "required"], hold=3)
+    #     ack_and_home()
+    #     return
+
+    # # Step3: Build card info
+    # now = get_local_time_s()
+    # activation = format_time(now)
+    # expiration = format_time(now + 30 * 24 * 3600)
+    # card_data = {
+    #     "uid": uid,
+    #     "activation_time": activation,
+    #     "expiration_time": expiration,
+    # }
+
+    # # Step4: Send to gate_guard
+    # try:
+    #     payload = json.dumps(card_data)
+    #     if len(payload) > 240:
+    #         show_lines(["Data too long", "cancelled"], hold=3)
+    #         ack_and_home()
+    #         return
+    #     e.send(GATE_GUARD_MAC, b"\x22" + payload.encode())
+    # except:
+    #     show_lines(["Send failed", "retry later"], hold=3)
+    #     ack_and_home()
+    #     return
+
+    # # Wait for reply
+    # start = time.ticks_ms()
+    # ok = False
+    # while time.ticks_diff(time.ticks_ms(), start) < 2000:
+    #     mac, msg = e.irecv(0)
+    #     if mac and msg and msg[0] == 0x23:
+    #         ok = msg[1] == 0x00
+    #         break
+    # if ok:
+    #     show_lines(["Register OK", "Card saved"], hold=3)
+    # else:
+    #     show_lines(["Register fail", "Try again"], hold=3)
+    # ack_and_home()
+
+
+# ---- RFID HELPERS ---
+
+
+def wait_for_card(timeout=10000):
+    """
+    Block until a card UID is read from MFRC522 or timeout expires.
+    timeout default = 10s
+    Returns UID string like '0x43EA1AD86B' or None.
+    """
+    start = time.ticks_ms()
+    while time.ticks_diff(time.ticks_ms(), start) < timeout:
+        (stat, tag_type) = rfid.request(rfid.REQIDL)
+        if stat == rfid.OK:
+            (stat, raw_uid) = rfid.anticoll()
+            if stat == rfid.OK:
+                uid_str = "0x" + "".join("{:02X}".format(i) for i in raw_uid)
+                print(f"[READER] Detected card UID={uid_str}")
+                return uid_str
+    return None
 
 
 # ---- TIME HELPERS ----
+
 
 def get_local_time_s():
     """Get local time in seconds since epoch adjusted for UTC offset"""
@@ -73,6 +301,16 @@ def get_local_time(local_time_s: float = None):
     if local_time_s is None:
         local_time_s = get_local_time_s()
     return time.localtime(local_time_s)
+
+
+def format_time(ts=None):
+    """Returns formatted time string for a timestamp (or now if ts None)."""
+    if ts is None:
+        ts = get_local_time_s()
+    # Use time.localtime to get tuple, then format
+    y, m, d, hh, mm, ss, _, _ = time.localtime(ts)
+    return f"{y:04d}-{m:02d}-{d:02d} {hh:02d}:{mm:02d}:{ss:02d}"
+
 
 def do_sync_time_online(ntp_servers: list, timeout: int = 5) -> bool:
     """
@@ -104,14 +342,19 @@ if not sta_if.isconnected():
         time.sleep(0.1)
 print("[ADMIN] ✅ Connected to network:", sta_if.ifconfig()[0])
 print("[ADMIN] ✅ Network channel:", sta_if.config("channel"))
-show_lines(["WiFi Connected", sta_if.ifconfig()[0], f"Channel: {sta_if.config('channel')}"], hold = 3)
+show_lines(
+    ["WiFi Connected", sta_if.ifconfig()[0], f"Channel: {sta_if.config('channel')}"],
+    hold=3,
+)
 
 # Sync time from NTP
 if not do_sync_time_online(NTP_SERVERS):
     raise Exception("Could not sync time on startup")
 
 print(f"[ADMIN] Current date/time: {get_local_time()}")
-show_lines(["Time Synced", str(get_local_time()[0:3]), str(get_local_time()[3:6])], hold=3) 
+show_lines(
+    ["Time Synced", str(get_local_time()[0:3]), str(get_local_time()[3:6])], hold=3
+)
 
 # Init ESP-NOW
 e = espnow.ESPNow()
@@ -120,6 +363,7 @@ e.add_peer(GATE_GUARD_MAC)
 
 
 def recv_cb(e):
+    global pending_msgs
     while True:
         mac, msg = e.irecv(0)
         if mac is None:
@@ -134,7 +378,10 @@ def recv_cb(e):
                 e.send(GATE_GUARD_MAC, response)
                 print("[ADMIN] ✅ Sent time:", get_local_time())
                 print("[ADMIN] ✅ Sent time (s):", get_local_time_s())
-                show_lines(["Time Sent", "to Gate Guard"])
+                show_lines(["Time Sent", "to Gate Guard"], hold=3)
+                show_home()
+            elif msg[0] == 0x21: # Guard response to checking if UID exists
+                pending_msgs.append((mac, msg))
             else:
                 print("[ADMIN] ❓ Unknown message:", msg)
                 show_lines(["Unknown msg", str(msg)])
@@ -144,6 +391,7 @@ e.irq(recv_cb)
 
 
 # ---- WEEKLY NTP RESYNC ----
+
 
 def weekly_resync(timer):
     t = get_local_time()
@@ -161,10 +409,44 @@ def weekly_resync(timer):
             print("[ADMIN] ❌ Weekly resync failed")
             show_lines(["Resync Failed"])
 
+
 # Non-blocking check every minute
 timer = Timer(0)
 timer.init(period=60000, mode=Timer.PERIODIC, callback=weekly_resync)
 
+
+# --- after setup + time sync success ---
+def show_home():
+    global last_button_pressed
+    last_button_pressed = None
+    show_lines(["[B1]Register", "[B2]Read", "[B3]Update", "[B4]Delete"])
+
+
+show_home()
+
 # ---- MAIN LOOP ----
-# while True:
-#     time.sleep(0.1)  # keep loop responsive
+while True:
+    if last_button_pressed is not None:
+        # Map gpio to button id
+        btn_id = BUTTON_PINS[last_button_pressed]
+        last_button_pressed = None
+        print(f"[ADMIN] Button event in main loop: btn_id={btn_id}")
+        if btn_id == 1:
+            # Register
+            register_flow()
+        elif btn_id == 2:
+            # Read (TODO)
+            show_lines(["Read (TODO)"], hold=3)
+            show_home()
+        elif btn_id == 3:
+            # Update (TODO)
+            show_lines(["Update (TODO)"], hold=3)
+            show_home()
+        elif btn_id == 4:
+            # Delete (TODO)
+            show_lines(["Delete (TODO)"], hold=3)
+            show_home()
+        else:
+            # Unknown: show home
+            show_home()
+    time.sleep(0.1)
