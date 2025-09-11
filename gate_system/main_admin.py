@@ -14,6 +14,7 @@ from config import (
     UTC_OFFSET,
     GATE_GUARD_MAC,
     MONTHLY_RATE_PHP,
+    DAILY_RATE_PHP,
 )
 
 BTN_DEBOUNCE_MS = 500  # debounce window
@@ -214,12 +215,13 @@ def register_flow():
         "Card type?", ["Monthly", "Daily", "Single Entry", "Cancel"]
     )
     if user_response == 1:
+        print("[ADMIN] Monthly registration selected")
         show_lines(["Selected:", "Monthly"])
         card_registration_error = handle_card_monthly_registration(uid)
     elif user_response == 2:
-        show_lines(["Not bad, daily."])
-        show_home()
-        return
+        print("[ADMIN] Daily registration selected")
+        show_lines(["Selected:", "Daily"])
+        card_registration_error = handle_card_daily_registration(uid)
     elif user_response == 3:
         show_lines(["Aw single entry"])
         show_home()
@@ -232,17 +234,18 @@ def register_flow():
     if card_registration_error == 0:
         show_lines(["Registration", "successful."], hold=3)
     elif card_registration_error == 1:
-        show_lines(["Send failed", "retry later"], hold=3)
-        show_lines(["Try again."], hold=3)
+        show_lines(["Send failed", "Retry later"], hold=3)
     elif card_registration_error == 2:
-        show_lines(["Send failed", "retry later"], hold=3)
+        show_lines(["Could not", "register"], hold=3)
         show_lines(["Try again."], hold=3)
     elif card_registration_error == 3:
-        show_lines(["Send failed", "retry later"], hold=3)
+        show_lines(["No response", "from database."], hold=3)
         show_lines(["Try again."], hold=3)
     elif card_registration_error == 4:
-        show_lines(["Send failed", "retry later"], hold=3)
+        show_lines(["Registration", "failed."], hold=3)
         show_lines(["Try again."], hold=3)
+    elif card_registration_error == 4:
+        show_lines(["Registration", "cancelled."], hold=3)
 
     show_home()
     return
@@ -299,7 +302,18 @@ def register_flow():
 
 def handle_card_monthly_registration(uid):
     prompt_user(f"Please pay: Php {MONTHLY_RATE_PHP} for the monthly rate.", ["Ok"])
-    prompt_user("Have you already paid?", ["Yes", "No"])
+    user_response = prompt_user("Have you already paid?", ["Yes", "No"])
+    if user_response == 1:
+        print("[ADMIN] Paid monthly.")
+        show_lines(["Paid.", "Please wait..."])
+    elif user_response == 2:
+        print("[ADMIN] Not paid.")
+        show_lines(["Not paid.", "Cancelling..."])
+        return 5
+    else:
+        print("[ADMIN] Wrong button pressed")
+        show_lines(["Unknown command.", "Try again."], hold=3)
+        return 5
 
     # Step 2: Build Card Info
     print("[ADMIN] Building monthly card details to register in the database")
@@ -321,7 +335,7 @@ def handle_card_monthly_registration(uid):
             return 2  # Data too long error
         e.send(GATE_GUARD_MAC, b"\x22" + payload.encode())
     except Exception:
-        return 1.0  # Send fail error
+        return 1  # Send fail error
 
     # Wait for reply
     start = time.ticks_ms()
@@ -330,6 +344,65 @@ def handle_card_monthly_registration(uid):
         if pending_msgs:
             mac, msg = pending_msgs.pop(0)
             if msg[0] == 0x23:  # response to UID check
+                registerd_status = msg[1] == 0x01
+                break
+        time.sleep(0.05)
+    if registerd_status is None:
+        print("[ADMIN] No response from gate guard.")
+        return 3  # No response from gate guard
+    if registerd_status:
+        print("[ADMIN] Card not registered.")
+        return 4 # Card not registered
+    else:
+        pass  # continue
+
+    return 0
+
+
+def handle_card_daily_registration(uid):
+    prompt_user(f"Please pay: Php {DAILY_RATE_PHP} for the daily rate.", ["Ok"])
+    user_response = prompt_user("Have you already paid?", ["Yes", "No"])
+    if user_response == 1:
+        print("[ADMIN] Paid monthly.")
+        show_lines(["Paid.", "Please wait..."])
+    elif user_response == 2:
+        print("[ADMIN] Not paid.")
+        show_lines(["Not paid.", "Cancelling..."])
+        return 5
+    else:
+        print("[ADMIN] Wrong button pressed")
+        show_lines(["Unknown command.", "Try again."], hold=3)
+        return 5
+
+    # Step 2: Build Card Info
+    print("[ADMIN] Building daily card details to register in the database")
+    now = get_local_time_s()
+    activation = format_time(now)
+    expiration = format_time(now + 24 * 3600)
+    card_data = {
+        "uid": uid,
+        "activation_time": activation,
+        "expiration_time": expiration,
+        "io_status": "out",
+        "status": "new",
+    }
+
+    # Step 3: Send to gate_guard
+    try:
+        payload = json.dumps(card_data)
+        if len(payload) > 240:
+            return 2  # Data too long error
+        e.send(GATE_GUARD_MAC, b"\x52" + payload.encode())
+    except Exception:
+        return 1  # Send fail error
+    
+    # Wait for reply
+    start = time.ticks_ms()
+    registerd_status = None
+    while time.ticks_diff(time.ticks_ms(), start) < 3000:  # 3s timeout
+        if pending_msgs:
+            mac, msg = pending_msgs.pop(0)
+            if msg[0] == 0x62:  # response to UID check
                 registerd_status = msg[1] == 0x01
                 break
         time.sleep(0.05)
@@ -592,12 +665,14 @@ def delete_flow():
         show_home()
         return
 
+
 def extract_json_block(data_str):
-    start = data_str.find('{')
-    end = data_str.find('}', start)
+    start = data_str.find("{")
+    end = data_str.find("}", start)
     if start != -1 and end != -1:
-        return data_str[start:end+1]  # include the closing }
+        return data_str[start : end + 1]  # include the closing }
     return None
+
 
 # ---- RFID HELPERS ---
 
@@ -715,6 +790,8 @@ def recv_cb(e):
             elif msg[0] == 0x21:  # Guard response to checking if UID exists
                 pending_msgs.append((mac, msg))
             elif msg[0] == 0x23:  # Guard response to for monthly registration
+                pending_msgs.append((mac, msg))
+            elif msg[0] == 0x62:  # Guard response to for daily registration
                 pending_msgs.append((mac, msg))
             elif msg[0] == 0x25:  # Guard response to UID deletion
                 pending_msgs.append((mac, msg))

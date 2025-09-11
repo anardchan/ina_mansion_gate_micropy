@@ -295,17 +295,27 @@ def validate_card(uid, source_mac):
 
     # Daily behavior
     if card_type in ("daily"):
-        # io_status holds last action; incoming request must be opposite
-        last_io = found_card.get("io_status")
-        if last_io == direction:
-            # same direction twice -> denied
-            log_access(
-                f"UID {uid} denied — wrong direction ({direction})",
-                err_code=ERR_WRONG_DIRECTION,
-            )
-            return False, ERR_WRONG_DIRECTION
-        # Approve and flip io_status
-        found_card["io_status"] = direction
+        if found_card.get("status") == "new":
+            # Set the initial io_status
+            found_card["io_status"] = direction
+            found_card["status"] = "active"
+            log_access(f"UID {uid} new. Set initial io_status ({direction})")
+            log_access(f"UID {uid}. Set status to active")
+        else:
+            pass
+            # io_status holds last action; incoming request must be opposite
+            last_io = found_card.get("io_status")
+            if last_io == direction:
+                # same direction twice -> denied
+                log_access(
+                    f"UID {uid} denied — wrong direction ({direction})",
+                    err_code=ERR_WRONG_DIRECTION,
+                )
+                return False, ERR_WRONG_DIRECTION
+            else:
+                # Flip io_status
+                found_card["io_status"] = direction
+        # Approve
         save_db(db)
         log_access(f"UID {uid} approved ({card_type}, {direction})")
         return True, ERR_SUCCESS
@@ -617,6 +627,30 @@ def recv_cb(e):
                 except:
                     pass
                 log_access("Register monthly failed", err_code=ERR_NOT_FOUND)
+        
+        # Admin: Register daily card
+        elif mac == ADMIN_MAC and msg and msg[0] == 0x52:
+            try:
+                payload = msg[1:].decode()
+                card_data = json.loads(payload)
+                db = load_db()
+                uid = card_data["uid"]
+                db["daily"][uid] = {
+                    "activation_time": card_data["activation_time"],
+                    "expiration_time": card_data["expiration_time"],
+                    "io_status": "out",
+                    "status": "new",
+                }
+                save_db(db)
+                e.send(ADMIN_MAC, b"\x62\x00")
+                log_access(f"UID {uid} registered (daily)")
+            except Exception as ex:
+                print("[GATE GUARD] Register daily failed:", ex)
+                try:
+                    e.send(ADMIN_MAC, b"\x62\x01")
+                except:
+                    pass
+                log_access("Register daily failed", err_code=ERR_NOT_FOUND)
 
         # TODO: 0x24 daily registration
         # TODO: 0x26 single_entry registration
