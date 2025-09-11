@@ -685,6 +685,32 @@ def expire_cards(timer):
 maintenance_timer = Timer(1)
 maintenance_timer.init(period=60000, mode=Timer.PERIODIC, callback=expire_cards)
 
+# --- DEBUG HELPER ---
+
+
+def print_database():
+    try:
+        with open("database.json", "r") as f:
+            data = json.load(f)
+            print("JSON contents:")
+            print(json.dumps(data))
+    except OSError:
+        print("Error: 'database.json' not found or could not be opened.")
+    except ValueError:
+        print("Error: 'database.json' contains invalid JSON data.")
+
+
+def print_log_file():
+    try:
+        with open("logs/access_log.txt", "r") as f:
+            file_content = f.read()
+            # Print the content
+            print("--- Guard Log File Contents ---")
+            print(file_content)
+            print("--------------------")
+    except OSError as e:
+        print(f"Error accessing file 'logs/access_log.txt': {e}")
+
 
 # ---- MAIN LOOP (heartbeat) ----
 # while True:

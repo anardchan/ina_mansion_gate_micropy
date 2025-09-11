@@ -34,7 +34,7 @@ UTC_OFFSET = 8 * 60 * 60  # GMT+8
 LOG_DIR = "logs"
 LOG_FILE_PREFIX = "log_"
 LOG_MAX_FILES = 8  # 2 months * 4 weeks
-MAX_LOG_LINES = 300  # configurable
+MAX_LOG_LINES = 500  # configurable
 
 # Wi-Fi Credentials
 SSID = "Converge_2.4GHz_3Fck" 
