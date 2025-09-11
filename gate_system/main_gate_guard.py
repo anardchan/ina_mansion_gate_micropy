@@ -477,6 +477,47 @@ def handle_delete_request(mac, msg):
         e.send(mac, b"\x25\x02")  # generic error
 
 
+def handle_read_request(mac, msg):
+    """Handle read request from Admin Board."""
+    try:
+        uid = msg[1:].decode()
+        log_access(f"[GATE_GUARD] 👓 Read request for UID={uid}")
+
+        found = False
+        for section in ["admin", "monthly", "daily", "single_entry"]:
+            if uid in db.get(section, {}):
+                found = True
+                # Build card info
+                card_data = {"ID": uid}
+                for key, value in db[section][uid].items():
+                    card_data[key] = value
+                # Send to Admin
+                try:
+                    payload = json.dumps(card_data)
+                    if len(payload) > 240:
+                        log_access(
+                            "[GATE_GUARD] ⚠️ Error handling read: data too long to send"
+                        )
+                        e.send(mac, b"\x26\x02")
+                        return
+                    e.send(
+                        mac, b"\x26\x00" + payload.encode()
+                    )  # success read and try sending data
+                except Exception:
+                    log_access("[GATE_GUARD] Failed to send UID data")
+                    return
+                log_access("[GATE_GUARD] UID details sent back to admin.")
+                break
+
+        if not found:
+            log_access(f"[GATE_GUARD] ❌ UID {uid} not found in DB.")
+            e.send(mac, b"\x26\x01")  # Card not found
+
+    except Exception as err:
+        log_access(f"[GATE_GUARD] ⚠️ Error handling read: {err}")
+        e.send(mac, b"\x26\x02")  # generic error
+
+
 def recv_cb(e):
     """ESP-NOW interrupt callback. Handles: time sync responses, reader requests."""
     global local_time_offset
@@ -576,6 +617,9 @@ def recv_cb(e):
 
         elif mac == ADMIN_MAC and msg and msg[0] == 0x24:  # Delete request
             handle_delete_request(mac, msg)
+
+        elif mac == ADMIN_MAC and msg and msg[0] == 0x25:  # Read request
+            handle_read_request(mac, msg)
 
         else:
             print("[GATE GUARD] ❓ Unknown message or source:", mac, msg)
