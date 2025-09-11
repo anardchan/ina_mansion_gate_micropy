@@ -351,7 +351,12 @@ def read_flow():
     if readback_status == 0: # Success
         print("[ADMIN] Readback success.")
         payload = msg[2:].decode()
-        card_data = json.loads(payload) # Returned data as a dictionary 
+        try:
+            card_data = json.loads(payload) # Returned data as a dictionary 
+        except Exception:
+            show_lines(["Unknown error.", "Try again."], hold=3)
+            show_home()
+            return
     elif readback_status == 1:
         print("[ADMIN] Card not registered.")
         show_lines(["Card not", "registered"], hold=3)
