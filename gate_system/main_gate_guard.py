@@ -472,13 +472,26 @@ def handle_delete_request(mac, msg):
         found = False
         for section in ["admin", "monthly", "daily", "single_entry"]:
             if uid in db.get(section, {}):
-                del db[section][uid]
-                save_db(db)
-                log_access(f"[GATE_GUARD] ✅ UID {uid} deleted from {section}.")
-                e.send(mac, b"\x25\x00")  # success deletion
+                print(f"section: {section}")
+                if section == "single_entry":
+                    print(f"Card status : {db[section][uid]["status"]}")
+                    if db[section][uid]["status"] == "paid" or db[section][uid]["status"] == "new" :
+                        # Paid, can delete card if wished
+                        del db[section][uid]
+                        save_db(db)
+                        log_access(f"[GATE_GUARD] ✅ UID {uid} deleted from {section}.")
+                        e.send(mac, b"\x25\x00")  # success deletion
+                    else: 
+                        # Not paid, cannot delete card
+                        log_access(f"[GATE_GUARD] ‼️ UID {uid} cannot be deleted from {section}. Not yet paid!")
+                        e.send(mac, b"\x25\x03")  # Cannot be deleted
+                else: # monthly or daily card
+                    del db[section][uid]
+                    save_db(db)
+                    log_access(f"[GATE_GUARD] ✅ UID {uid} deleted from {section}.")
+                    e.send(mac, b"\x25\x00")  # success deletion
                 found = True
                 break
-
         if not found:
             log_access(f"[GATE_GUARD] ❌ UID {uid} not found in DB.")
             e.send(mac, b"\x25\x01")  # Card not found
@@ -652,8 +665,29 @@ def recv_cb(e):
                     pass
                 log_access("Register daily failed", err_code=ERR_NOT_FOUND)
 
-        # TODO: 0x24 daily registration
-        # TODO: 0x26 single_entry registration
+        # Admin: Register Single Entry Card
+        elif mac == ADMIN_MAC and msg and msg[0] == 0x53:
+            try:
+                payload = msg[1:].decode()
+                card_data = json.loads(payload)
+                db = load_db()
+                uid = card_data["uid"]
+                db["single_entry"][uid] = {
+                    "entry_time": card_data["entry_time"],
+                    "io_status": card_data["io_status"],
+                    "status": card_data["status"],
+                }
+                save_db(db)
+                e.send(ADMIN_MAC, b"\x63\x00")
+                log_access(f"UID {uid} registered (single entry)")
+            except Exception as ex:
+                print("[GATE GUARD] Register single entry failed:", ex)
+                try:
+                    e.send(ADMIN_MAC, b"\x63\x01")
+                except:
+                    pass
+                log_access("Register single entry failed", err_code=ERR_NOT_FOUND)
+
 
         elif mac == ADMIN_MAC and msg and msg[0] == 0x24:  # Delete request
             handle_delete_request(mac, msg)

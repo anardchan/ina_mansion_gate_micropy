@@ -223,9 +223,9 @@ def register_flow():
         show_lines(["Selected:", "Daily"])
         card_registration_error = handle_card_daily_registration(uid)
     elif user_response == 3:
-        show_lines(["Aw single entry"])
-        show_home()
-        return
+        print("[ADMIN] Single-entry registration selected")
+        show_lines(["Selected:", "Single entry"])
+        card_registration_error = handle_card_se_registration(uid)
     else:
         show_lines(["Cancelled. Returning home"])
         show_home()
@@ -244,60 +244,11 @@ def register_flow():
     elif card_registration_error == 4:
         show_lines(["Registration", "failed."], hold=3)
         show_lines(["Try again."], hold=3)
-    elif card_registration_error == 4:
+    elif card_registration_error == 5:
         show_lines(["Registration", "cancelled."], hold=3)
 
     show_home()
     return
-
-    # Step 3: Process card type registration.
-
-    # Step2: for now only Monthly
-    # show_lines(["Monthly card", "Fee: Php XXX", "Have you", "paid?"], hold=2)
-
-    # # Assume Button1 = Yes, Button2 = No
-    # paid = wait_for_yes_no()
-    # if not paid:
-    #     show_lines(["Payment", "required"], hold=3)
-    #     ack_and_home()
-    #     return
-
-    # # Step3: Build card info
-    # now = get_local_time_s()
-    # activation = format_time(now)
-    # expiration = format_time(now + 30 * 24 * 3600)
-    # card_data = {
-    #     "uid": uid,
-    #     "activation_time": activation,
-    #     "expiration_time": expiration,
-    # }
-
-    # # Step4: Send to gate_guard
-    # try:
-    #     payload = json.dumps(card_data)
-    #     if len(payload) > 240:
-    #         show_lines(["Data too long", "cancelled"], hold=3)
-    #         ack_and_home()
-    #         return
-    #     e.send(GATE_GUARD_MAC, b"\x22" + payload.encode())
-    # except:
-    #     show_lines(["Send failed", "retry later"], hold=3)
-    #     ack_and_home()
-    #     return
-
-    # # Wait for reply
-    # start = time.ticks_ms()
-    # ok = False
-    # while time.ticks_diff(time.ticks_ms(), start) < 2000:
-    #     mac, msg = e.irecv(0)
-    #     if mac and msg and msg[0] == 0x23:
-    #         ok = msg[1] == 0x00
-    #         break
-    # if ok:
-    #     show_lines(["Register OK", "Card saved"], hold=3)
-    # else:
-    #     show_lines(["Register fail", "Try again"], hold=3)
-    # ack_and_home()
 
 
 def handle_card_monthly_registration(uid):
@@ -352,7 +303,7 @@ def handle_card_monthly_registration(uid):
         return 3  # No response from gate guard
     if registerd_status:
         print("[ADMIN] Card not registered.")
-        return 4 # Card not registered
+        return 4  # Card not registered
     else:
         pass  # continue
 
@@ -395,7 +346,7 @@ def handle_card_daily_registration(uid):
         e.send(GATE_GUARD_MAC, b"\x52" + payload.encode())
     except Exception:
         return 1  # Send fail error
-    
+
     # Wait for reply
     start = time.ticks_ms()
     registerd_status = None
@@ -417,6 +368,51 @@ def handle_card_daily_registration(uid):
 
     return 0
 
+
+def handle_card_se_registration(uid):
+    print("[ADMIN] Single entry card registration.")
+    show_lines(["Please wait..."])
+
+    # Step 2: Build Card Info
+    print("[ADMIN] Building single entry card details to register in the database")
+    now = get_local_time_s()
+    activation = format_time(now)
+    card_data = {
+        "uid": uid,
+        "entry_time": activation,
+        "io_status": "out",
+        "status": "new",
+    }
+
+    # Step 3: Send to gate_guard
+    try:
+        payload = json.dumps(card_data)
+        if len(payload) > 240:
+            return 2  # Data too long error
+        e.send(GATE_GUARD_MAC, b"\x53" + payload.encode())
+    except Exception:
+        return 1  # Send fail error
+
+    # Wait for reply
+    start = time.ticks_ms()
+    registerd_status = None
+    while time.ticks_diff(time.ticks_ms(), start) < 3000:  # 3s timeout
+        if pending_msgs:
+            mac, msg = pending_msgs.pop(0)
+            if msg[0] == 0x63:  # response to single entry registration
+                registerd_status = msg[1] == 0x01
+                break
+        time.sleep(0.05)
+    if registerd_status is None:
+        print("[ADMIN] No response from gate guard.")
+        return 3  # No response from gate guard
+    if registerd_status:
+        print("[ADMIN] Card not registered.")
+        return 4  # Card not registered
+    else:
+        pass  # continue
+
+    return 0
 
 # READ
 def read_flow():
@@ -644,26 +640,21 @@ def delete_flow():
     if delete_status is None:
         print("[ADMIN] No response from gate guard.")
         show_lines(["No reply", "from database"], hold=3)
-        show_home()
-        return
     if delete_status == 0:
         print("[ADMIN] Card was said to be deleted.")
         show_lines(["Card deleted."], hold=3)
-        show_home()
-        return
     elif delete_status == 1:
         print("[ADMIN] Card not registered.")
         show_lines(["Card not", "registered"], hold=3)
-        show_home()
-        return
     elif delete_status == 2:
         print("[ADMIN] Unknown error occured.")
         show_lines(["Unknown error."], hold=3)
-        show_home()
-        return
-    else:
-        show_home()
-        return
+    elif delete_status == 3:
+        print("[ADMIN] Card is not yet paid.")
+        show_lines(["Card not paid.", "Please pay first."], hold=3)
+
+    show_home()
+    return
 
 
 def extract_json_block(data_str):
@@ -792,6 +783,8 @@ def recv_cb(e):
             elif msg[0] == 0x23:  # Guard response to for monthly registration
                 pending_msgs.append((mac, msg))
             elif msg[0] == 0x62:  # Guard response to for daily registration
+                pending_msgs.append((mac, msg))
+            elif msg[0] == 0x63:  # Guard response to for single entry registration
                 pending_msgs.append((mac, msg))
             elif msg[0] == 0x25:  # Guard response to UID deletion
                 pending_msgs.append((mac, msg))
