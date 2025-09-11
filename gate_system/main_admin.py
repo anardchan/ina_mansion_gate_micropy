@@ -124,7 +124,7 @@ def prompt_user(title="", options=None, timeout=None):
 
     # Wrap and print each option
     for idx, opt in enumerate(options):
-        prefix = f"[b{idx + 1}] "
+        prefix = f"[B{idx + 1}] "
         wrapped_lines = wrap_text(prefix + opt)
         for w in wrapped_lines:
             oled.text(w, 0, line)
@@ -146,7 +146,7 @@ def prompt_user(title="", options=None, timeout=None):
             return None
         time.sleep(0.05)  # 50ms
 
-
+# CREATE
 def register_flow():
     show_lines(["Tap card to", "register..."])
     uid = wait_for_card()  # blocking read from MFRC522
@@ -266,6 +266,119 @@ def register_flow():
     #     show_lines(["Register fail", "Try again"], hold=3)
     # ack_and_home()
 
+# READ
+def read_flow():
+    show_lines(["Tap card to", "read..."])
+    uid = wait_for_card()  # blocking read from MFRC522
+    if not uid:
+        print("[ADMIN] Did not find any UID.")
+        user_response = None
+        user_response = prompt_user("No card detected. Try again?", ["Yes", "No"])
+        if user_response == 1:
+            print("[ADMIN] Trying to read card again...")
+            read_flow()
+            return
+        elif user_response == 2:
+            print("[ADMIN] Reading card process cancelled.")
+            show_home()
+            return
+        else:
+            print("[ADMIN] Wrong button pressed")
+            show_lines(["Unknown command.", "Try again."], hold=3)
+            show_home()
+            return
+    
+    # Step 1: Check if UID Exists
+    try:
+        print("[ADMIN] Asking gate guard if UID exists in database...")
+        e.send(GATE_GUARD_MAC, b"\x20" + uid.encode())
+    except Exception as err:
+        print(f"[ADMIN] Error checking if UID exists. {err}")
+        show_lines(["ID check failed.", "Try again."], hold=3)
+        show_home()
+        return
+    
+    # Wait for reply
+    start = time.ticks_ms()
+    exists = None
+    while time.ticks_diff(time.ticks_ms(), start) < 3000:  # 3s timeout
+        if pending_msgs:
+            mac, msg = pending_msgs.pop(0)
+            if msg[0] == 0x21:  # response to UID check
+                exists = msg[1] == 0x01
+                break
+        time.sleep(0.05)
+    if exists is None:
+        print("[ADMIN] No response from gate guard.")
+        show_lines(["No reply", "from database"], hold=3)
+        show_home()
+        return
+    if exists == 0:
+        print("[ADMIN] Card not registered.")
+        show_lines(["Card not", "registered"], hold=3)
+        show_home()
+        return
+    else:
+        print("[ADMIN] Gate guard says the card exists.")
+        pass  # continue
+
+    # Step 2: Ask for card details
+    try:
+        print("[ADMIN] Asking gate guard for UID info...")
+        e.send(GATE_GUARD_MAC, b"\x25" + uid.encode())
+    except Exception as err:
+        print(f"[ADMIN] Error checking if UID exists. {err}")
+        show_lines(["ID check failed.", "Try again."], hold=3)
+        show_home()
+        return
+    
+    # Wait for reply
+    start = time.ticks_ms()
+    readback_status = None
+    card_data = None
+    while time.ticks_diff(time.ticks_ms(), start) < 3000:  # 3s timeout
+        if pending_msgs:
+            mac, msg = pending_msgs.pop(0)
+            if msg[0] == 0x26:  # response to UID check
+                readback_status = msg[1]
+                break
+        time.sleep(0.05)
+    if readback_status is None:
+        print("[ADMIN] No response from gate guard.")
+        show_lines(["No reply", "from database"], hold=3)
+        show_home()
+        return
+    if readback_status == 0: # Success
+        print("[ADMIN] Readback success.")
+        payload = msg[2:].decode()
+        card_data = json.loads(payload) # Returned data as a dictionary 
+    elif readback_status == 1:
+        print("[ADMIN] Card not registered.")
+        show_lines(["Card not", "registered"], hold=3)
+        show_home()
+        return
+    elif readback_status == 2:
+        print("[ADMIN] Unknown error occured.")
+        show_lines(["Unknown error."], hold=3)
+        show_home()
+        return
+    else:
+        show_home()
+        return
+    
+    for (key, value) in card_data.items():
+        print(f"[ADMIN] Key: {key}, Value: {value}")
+        prompt_user(f"{key}: {value}", ["Next"])
+
+
+    prompt_user("Nothing else to show.", ["End"])
+    show_home()
+    return
+
+# UPDATE
+# TODO
+
+# DELETE
 def delete_flow():
     """Delete a card from the database via Gate Guard."""
     show_lines(["Tap card to", "delete..."])
@@ -374,7 +487,7 @@ def delete_flow():
         show_lines(["Card not", "registered"], hold=3)
         show_home()
         return
-    elif exists == 2:
+    elif delete_status == 2:
         print("[ADMIN] Unknown error occured.")
         show_lines(["Unknown error."], hold=3)
         show_home()
@@ -501,6 +614,8 @@ def recv_cb(e):
                 pending_msgs.append((mac, msg))
             elif msg[0] == 0x25: # Guard response to UID deletion
                 pending_msgs.append((mac, msg))
+            elif msg[0] == 0x26: # Guard response to UID read
+                pending_msgs.append((mac, msg))
             else:
                 print("[ADMIN] ❓ Unknown message:", msg)
                 show_lines(["Unknown msg", str(msg)])
@@ -554,9 +669,7 @@ while True:
             # Register
             register_flow()
         elif btn_id == 2:
-            # Read (TODO)
-            show_lines(["Read (TODO)"], hold=3)
-            show_home()
+            read_flow()
         elif btn_id == 3:
             # Update (TODO)
             show_lines(["Update (TODO)"], hold=3)
