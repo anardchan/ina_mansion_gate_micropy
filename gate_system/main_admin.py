@@ -7,7 +7,14 @@ import json
 from machine import Timer, Pin, I2C  # type: ignore
 from mfrc522 import MFRC522
 from ssd1306 import SSD1306_I2C
-from config import SSID, SSID_PW, NTP_SERVERS, UTC_OFFSET, GATE_GUARD_MAC
+from config import (
+    SSID,
+    SSID_PW,
+    NTP_SERVERS,
+    UTC_OFFSET,
+    GATE_GUARD_MAC,
+    MONTHLY_RATE_PHP,
+)
 
 BTN_DEBOUNCE_MS = 500  # debounce window
 
@@ -146,6 +153,7 @@ def prompt_user(title="", options=None, timeout=None):
             return None
         time.sleep(0.05)  # 50ms
 
+
 # CREATE
 def register_flow():
     show_lines(["Tap card to", "register..."])
@@ -177,7 +185,7 @@ def register_flow():
         show_lines(["ID check failed.", "Try again."], hold=3)
         show_home()
         return
-    
+
     # Wait for reply
     start = time.ticks_ms()
     exists = None
@@ -201,21 +209,43 @@ def register_flow():
 
     # Step 2: Choose card type
     user_response = None
+    card_registration_error = None
     user_response = prompt_user(
         "Card type?", ["Monthly", "Daily", "Single Entry", "Cancel"]
     )
     if user_response == 1:
-        show_lines(["Cool, you picked", "monthly."])
-        show_home()
+        show_lines(["Selected:", "Monthly"])
+        card_registration_error = handle_card_monthly_registration(uid)
     elif user_response == 2:
         show_lines(["Not bad, daily."])
         show_home()
+        return
     elif user_response == 3:
         show_lines(["Aw single entry"])
         show_home()
+        return
     else:
         show_lines(["Cancelled. Returning home"])
         show_home()
+        return
+
+    if card_registration_error == 0:
+        show_lines(["Registration", "successful."], hold=3)
+    elif card_registration_error == 1:
+        show_lines(["Send failed", "retry later"], hold=3)
+        show_lines(["Try again."], hold=3)
+    elif card_registration_error == 2:
+        show_lines(["Send failed", "retry later"], hold=3)
+        show_lines(["Try again."], hold=3)
+    elif card_registration_error == 3:
+        show_lines(["Send failed", "retry later"], hold=3)
+        show_lines(["Try again."], hold=3)
+    elif card_registration_error == 4:
+        show_lines(["Send failed", "retry later"], hold=3)
+        show_lines(["Try again."], hold=3)
+
+    show_home()
+    return
 
     # Step 3: Process card type registration.
 
@@ -266,6 +296,55 @@ def register_flow():
     #     show_lines(["Register fail", "Try again"], hold=3)
     # ack_and_home()
 
+
+def handle_card_monthly_registration(uid):
+    prompt_user(f"Please pay: Php {MONTHLY_RATE_PHP} for the monthly rate.", ["Ok"])
+    prompt_user("Have you already paid?", ["Yes", "No"])
+
+    # Step 2: Build Card Info
+    print("[ADMIN] Building monthly card details to register in the database")
+    now = get_local_time_s()
+    activation = format_time(now)
+    expiration = format_time(now + 30 * 24 * 3600)
+    card_data = {
+        "uid": uid,
+        "activation_time": activation,
+        "expiration_time": expiration,
+        "io_status": "out",
+        "status": "new",
+    }
+
+    # Step 3: Send to gate_guard
+    try:
+        payload = json.dumps(card_data)
+        if len(payload) > 240:
+            return 2  # Data too long error
+        e.send(GATE_GUARD_MAC, b"\x22" + payload.encode())
+    except Exception:
+        return 1.0  # Send fail error
+
+    # Wait for reply
+    start = time.ticks_ms()
+    registerd_status = None
+    while time.ticks_diff(time.ticks_ms(), start) < 3000:  # 3s timeout
+        if pending_msgs:
+            mac, msg = pending_msgs.pop(0)
+            if msg[0] == 0x23:  # response to UID check
+                registerd_status = msg[1] == 0x01
+                break
+        time.sleep(0.05)
+    if registerd_status is None:
+        print("[ADMIN] No response from gate guard.")
+        return 3  # No response from gate guard
+    if registerd_status:
+        print("[ADMIN] Card not registered.")
+        return 4
+    else:
+        pass  # continue
+
+    return 0
+
+
 # READ
 def read_flow():
     show_lines(["Tap card to", "read..."])
@@ -287,7 +366,7 @@ def read_flow():
             show_lines(["Unknown command.", "Try again."], hold=3)
             show_home()
             return
-    
+
     # Step 1: Check if UID Exists
     try:
         print("[ADMIN] Asking gate guard if UID exists in database...")
@@ -297,7 +376,7 @@ def read_flow():
         show_lines(["ID check failed.", "Try again."], hold=3)
         show_home()
         return
-    
+
     # Wait for reply
     start = time.ticks_ms()
     exists = None
@@ -331,7 +410,7 @@ def read_flow():
         show_lines(["ID check failed.", "Try again."], hold=3)
         show_home()
         return
-    
+
     # Wait for reply
     start = time.ticks_ms()
     readback_status = None
@@ -348,12 +427,21 @@ def read_flow():
         show_lines(["No reply", "from database"], hold=3)
         show_home()
         return
-    if readback_status == 0: # Success
+    if readback_status == 0:  # Success
         print("[ADMIN] Readback success.")
-        payload = msg[2:].decode()
+        payload_raw = msg[2:].decode().strip()
+        payload_clean = extract_json_block(payload_raw)
+        if payload_clean is None:
+            print("[ADMIN] No valid JSON found.")
+            show_lines(["Data error.", "Try again."], hold=3)
+            show_home()
+            return
         try:
-            card_data = json.loads(payload) # Returned data as a dictionary 
-        except Exception:
+            print(payload_clean)
+            print(type(payload_clean))
+            card_data = json.loads(payload_clean)  # Returned data as a dictionary
+        except Exception as err:
+            print(f"[ADMIN] Could not load payload. Error {err}")
             show_lines(["Unknown error.", "Try again."], hold=3)
             show_home()
             return
@@ -370,18 +458,19 @@ def read_flow():
     else:
         show_home()
         return
-    
-    for (key, value) in card_data.items():
+
+    for key, value in card_data.items():
         print(f"[ADMIN] Key: {key}, Value: {value}")
         prompt_user(f"{key}: {value}", ["Next"])
-
 
     prompt_user("Nothing else to show.", ["End"])
     show_home()
     return
 
+
 # UPDATE
 # TODO
+
 
 # DELETE
 def delete_flow():
@@ -406,7 +495,7 @@ def delete_flow():
             show_lines(["Unknown command.", "Try again."], hold=3)
             show_home()
             return
-        
+
     # Step 1: Check if UID exists
     try:
         print("[ADMIN] Asking gate guard if UID exists in database...")
@@ -416,7 +505,7 @@ def delete_flow():
         show_lines(["ID check failed.", "Try again."], hold=3)
         show_home()
         return
-    
+
     # Wait for reply
     start = time.ticks_ms()
     exists = None
@@ -439,10 +528,12 @@ def delete_flow():
         return
     else:
         pass  # continue
-    
+
     # Step 2: Ask for certain of card should be deleted
     user_response = None
-    user_response = prompt_user("Card found. Are you sure you want to delete card?", ["Yes", "No"])
+    user_response = prompt_user(
+        "Card found. Are you sure you want to delete card?", ["Yes", "No"]
+    )
     if user_response == 1:
         print("[ADMIN] Trying to delete card.")
         show_lines(["Deleting card", "from database."])
@@ -456,7 +547,7 @@ def delete_flow():
         show_lines(["Unknown command.", "Try again."], hold=3)
         show_home()
         return
-    
+
     # Step 3: Ask the gate guard to delete UID
     try:
         print(f"[ADMIN] 📨 Sending delete request for UID={uid}")
@@ -466,7 +557,7 @@ def delete_flow():
         show_lines(["Delete failed.", "Send error"], hold=3)
         show_home()
         return
-    
+
     # Wait for reply
     start = time.ticks_ms()
     delete_status = None
@@ -501,6 +592,12 @@ def delete_flow():
         show_home()
         return
 
+def extract_json_block(data_str):
+    start = data_str.find('{')
+    end = data_str.find('}', start)
+    if start != -1 and end != -1:
+        return data_str[start:end+1]  # include the closing }
+    return None
 
 # ---- RFID HELPERS ---
 
@@ -615,11 +712,13 @@ def recv_cb(e):
                 print("[ADMIN] ✅ Sent time (s):", get_local_time_s())
                 show_lines(["Time Sent", "to Gate Guard"], hold=3)
                 show_home()
-            elif msg[0] == 0x21: # Guard response to checking if UID exists
+            elif msg[0] == 0x21:  # Guard response to checking if UID exists
                 pending_msgs.append((mac, msg))
-            elif msg[0] == 0x25: # Guard response to UID deletion
+            elif msg[0] == 0x23:  # Guard response to for monthly registration
                 pending_msgs.append((mac, msg))
-            elif msg[0] == 0x26: # Guard response to UID read
+            elif msg[0] == 0x25:  # Guard response to UID deletion
+                pending_msgs.append((mac, msg))
+            elif msg[0] == 0x26:  # Guard response to UID read
                 pending_msgs.append((mac, msg))
             else:
                 print("[ADMIN] ❓ Unknown message:", msg)

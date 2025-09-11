@@ -454,6 +454,7 @@ def request_time_from_admin():
 
 def handle_delete_request(mac, msg):
     """Handle delete request from Admin Board."""
+    db = load_db()
     try:
         uid = msg[1:].decode()
         log_access(f"[GATE_GUARD] 🗑️ Delete request for UID={uid}")
@@ -479,6 +480,7 @@ def handle_delete_request(mac, msg):
 
 def handle_read_request(mac, msg):
     """Handle read request from Admin Board."""
+    db = load_db()
     try:
         uid = msg[1:].decode()
         log_access(f"[GATE_GUARD] 👓 Read request for UID={uid}")
@@ -486,11 +488,13 @@ def handle_read_request(mac, msg):
         found = False
         for section in ["admin", "monthly", "daily", "single_entry"]:
             if uid in db.get(section, {}):
-                found = True
                 # Build card info
-                card_data = {"ID": uid}
+                card_data = {}
+                card_data.clear()
+                card_data["ID"] = uid
                 for key, value in db[section][uid].items():
                     card_data[key] = value
+                print(card_data)
                 # Send to Admin
                 try:
                     payload = json.dumps(card_data)
@@ -500,6 +504,7 @@ def handle_read_request(mac, msg):
                         )
                         e.send(mac, b"\x26\x02")
                         return
+                    print("Sending data to Admin")
                     e.send(
                         mac, b"\x26\x00" + payload.encode()
                     )  # success read and try sending data
@@ -507,15 +512,20 @@ def handle_read_request(mac, msg):
                     log_access("[GATE_GUARD] Failed to send UID data")
                     return
                 log_access("[GATE_GUARD] UID details sent back to admin.")
+                found = True
+                print(f"Found status is {found}")
                 break
 
         if not found:
             log_access(f"[GATE_GUARD] ❌ UID {uid} not found in DB.")
             e.send(mac, b"\x26\x01")  # Card not found
+            return
 
     except Exception as err:
         log_access(f"[GATE_GUARD] ⚠️ Error handling read: {err}")
         e.send(mac, b"\x26\x02")  # generic error
+
+    return
 
 
 def recv_cb(e):
@@ -587,12 +597,8 @@ def recv_cb(e):
         # Admin: Register monthly card
         elif mac == ADMIN_MAC and msg and msg[0] == 0x22:
             try:
-                print(f"msg : {msg}")
-                print(f"msg_hex : {msg.hex()}")
                 payload = msg[1:].decode()
-                print(f"payload : {payload}")
                 card_data = json.loads(payload)
-                print(f"card_data : {card_data}")
                 db = load_db()
                 uid = card_data["uid"]
                 db["monthly"][uid] = {
