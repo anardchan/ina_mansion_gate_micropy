@@ -343,14 +343,7 @@ def validate_card(uid, source_mac):
 
         # OUT path: several possibilities
         else:  # direction == "out"
-            if status == "in_progress":
-                # This is the payment moment: complete_single_entry sets 'paid' and grace
-                price = complete_single_entry(uid)
-                # complete_single_entry already logged payment
-                # Return a special code indicating payment processed (reader should not open gate yet)
-                return False, ERR_PAYMENT_PROCESSED
-
-            elif status == "paid":
+            if status == "paid":
                 # check grace period
                 exp_str = found_card.get("expiration_time")
                 if not exp_str:
@@ -475,7 +468,7 @@ def handle_delete_request(mac, msg):
                 print(f"section: {section}")
                 if section == "single_entry":
                     print(f"Card status : {db[section][uid]["status"]}")
-                    if db[section][uid]["status"] == "paid" or db[section][uid]["status"] == "new" :
+                    if db[section][uid]["status"] == "paid" or db[section][uid]["status"] == "new" or db[section][uid]["status"] == "expired" :
                         # Paid, can delete card if wished
                         del db[section][uid]
                         save_db(db)
@@ -616,6 +609,50 @@ def recv_cb(e):
                     log_access(f"Admin checked UID {uid}: not found.")
             except Exception as ex:
                 print("[GATE GUARD] UID check failed:", ex)
+
+        # Admin: Get card type
+        elif mac == ADMIN_MAC and msg and msg[0] == 0x55:
+            try:
+                uid = msg[1:].decode()
+                db = load_db()
+                uid_found = False
+                for c_type in ["monthly", "daily", "single_entry"]:
+                    if uid in db.get(c_type):
+                        if c_type == "monthly":
+                            log_access("UID type: monthly. Sent to Admin.")
+                            e.send(ADMIN_MAC, b"\x65\x01")
+                        elif c_type == "daily":
+                            log_access("UID type: daily. Sent to Admin.")
+                            e.send(ADMIN_MAC, b"\x65\x02")
+                        elif c_type == "single_entry":
+                            log_access("UID type: single_entry. Sent to Admin.")
+                            e.send(ADMIN_MAC, b"\x65\x03")
+                        uid_found = True
+                        break
+                if not uid_found:
+                    log_access("UID type: not found. Sent to Admin.")
+                    e.send(ADMIN_MAC, b"\x65\x00")
+            except Exception as ex:
+                log_access("UID check type failed:", ex)
+        
+        # Admin: Get single entry price type
+        elif mac == ADMIN_MAC and msg and msg[0] == 0x57:
+            try:
+                uid = msg[1:].decode()
+                db = load_db()
+                card = db["single_entry"][uid]
+                status = card.get("status")
+                if status == "in_progress":
+                    # This is the payment moment: complete_single_entry sets 'paid' and grace
+                    price = complete_single_entry(uid)
+                    # complete_single_entry already logged payment
+                    e.send(ADMIN_MAC, b"\x67\x00"+price.to_bytes())
+                    log_access(f"💰 UID price sent: Php {price}")
+                else:
+                    e.send(ADMIN_MAC, b"\x67\x01"+status.encode())
+                    log_access(f"Invalid UID status for payment: {status}")
+            except Exception as ex:
+                log_access("Send price failed:", ex)
 
         # Admin: Register monthly card
         elif mac == ADMIN_MAC and msg and msg[0] == 0x22:

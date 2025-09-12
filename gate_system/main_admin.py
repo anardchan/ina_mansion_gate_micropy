@@ -15,6 +15,7 @@ from config import (
     GATE_GUARD_MAC,
     MONTHLY_RATE_PHP,
     DAILY_RATE_PHP,
+    GRACE_MINS,
 )
 
 BTN_DEBOUNCE_MS = 500  # debounce window
@@ -538,7 +539,195 @@ def read_flow():
 
 
 # UPDATE
-# TODO
+def update_flow():
+    """Update a card's details in the database via Gate Guard."""
+    show_lines(["Tap card to", "update..."])
+    print("[ADMIN] Waiting for card to be detected.")
+    uid = wait_for_card()
+
+    if not uid:
+        print("[ADMIN] ❌ No card detected.")
+        user_response = None
+        user_response = prompt_user("No card detected. Try again?", ["Yes", "No"])
+        if user_response == 1:
+            print("[ADMIN] Trying to update card again...")
+            update_flow()
+            return
+        elif user_response == 2:
+            print("[ADMIN] Register card process cancelled.")
+            show_home()
+            return
+        else:
+            print("[ADMIN] Wrong button pressed")
+            show_lines(["Unknown command.", "Try again."], hold=3)
+            show_home()
+            return
+    
+    # Step 1: Check if UID exists
+    try:
+        print("[ADMIN] Asking gate guard if UID exists in database...")
+        e.send(GATE_GUARD_MAC, b"\x20" + uid.encode())
+    except Exception as err:
+        print(f"[ADMIN] Error checking if UID exists. {err}")
+        show_lines(["ID check failed.", "Try again."], hold=3)
+        show_home()
+        return
+    
+    # Wait for reply
+    start = time.ticks_ms()
+    exists = None
+    while time.ticks_diff(time.ticks_ms(), start) < 3000:  # 3s timeout
+        if pending_msgs:
+            mac, msg = pending_msgs.pop(0)
+            if msg[0] == 0x21:  # response to UID check
+                exists = msg[1] == 0x01
+                break
+        time.sleep(0.05)
+    if exists is None:
+        print("[ADMIN] No response from gate guard.")
+        show_lines(["No reply", "from database"], hold=3)
+        show_home()
+        return
+    if exists == 0:
+        print("[ADMIN] Card not registered.")
+        show_lines(["Card not", "registered"], hold=3)
+        show_home()
+        return
+    else:
+        pass  # continue
+
+    # Step 3: Get card type
+    try:
+        print("[ADMIN] Asking gate guard for the UID card type...")
+        e.send(GATE_GUARD_MAC, b"\x55" + uid.encode())
+    except Exception as err:
+        print(f"[ADMIN] Error checking if UID exists. {err}")
+        show_lines(["ID check failed.", "Try again."], hold=3)
+        show_home()
+        return
+    
+    # Wait for reply
+    start = time.ticks_ms()
+    card_type = None
+    while time.ticks_diff(time.ticks_ms(), start) < 3000:  # 3s timeout
+        if pending_msgs:
+            mac, msg = pending_msgs.pop(0)
+            if msg[0] == 0x65:  # response to UID check
+                card_type = msg[1]
+                break
+        time.sleep(0.05)
+    if card_type is None:
+        print("[ADMIN] No response from gate guard.")
+        show_lines(["No reply", "from database"], hold=3)
+        show_home()
+        return
+    if card_type == 0x01:  # monthly card
+        print("[ADMIN] Card is said to be monthly type.")
+        user_input = prompt_user("Renew monthly card?", ["Yes", "No"])
+        if user_input == 1:
+            print("[ADMIN] Trying to renew monthly card...")
+            renew_err = handle_card_monthly_registration(uid)
+            if renew_err == 0:
+                show_lines(["Renew", "successful."], hold=3)
+            elif renew_err == 1:
+                show_lines(["Send failed", "Retry later"], hold=3)
+            elif renew_err == 2:
+                show_lines(["Could not", "renew"], hold=3)
+                show_lines(["Try again."], hold=3)
+            elif renew_err == 3:
+                show_lines(["No response", "from database."], hold=3)
+                show_lines(["Try again."], hold=3)
+            elif renew_err == 4:
+                show_lines(["Renew", "failed."], hold=3)
+                show_lines(["Try again."], hold=3)
+            elif renew_err == 5:
+                show_lines(["Renew", "cancelled."], hold=3)
+        elif user_input == 2:
+            print("[ADMIN] Renew card process cancelled.")
+            show_lines(["Renew", "cancelled."], hold=3)
+        else:
+            print("[ADMIN] Wrong button pressed")
+            show_lines(["Unknown command.", "Try again."], hold=3)
+        show_home()
+        return
+    elif card_type == 0x02:  # daily card
+        print("[ADMIN] Card is said to be daily type.")
+        user_input = prompt_user("Renew daily card?", ["Yes", "No"])
+        if user_input == 1:
+            print("[ADMIN] Trying to renew daily card...")
+            renew_err = handle_card_daily_registration(uid)
+            if renew_err == 0:
+                show_lines(["Renew", "successful."], hold=3)
+            elif renew_err == 1:
+                show_lines(["Send failed", "Retry later"], hold=3)
+            elif renew_err == 2:
+                show_lines(["Could not", "renew"], hold=3)
+                show_lines(["Try again."], hold=3)
+            elif renew_err == 3:
+                show_lines(["No response", "from database."], hold=3)
+                show_lines(["Try again."], hold=3)
+            elif renew_err == 4:
+                show_lines(["Renew", "failed."], hold=3)
+                show_lines(["Try again."], hold=3)
+            elif renew_err == 5:
+                show_lines(["Renew", "cancelled."], hold=3)
+        elif user_input == 2:
+            print("[ADMIN] Renew card process cancelled.")
+            show_lines(["Renew", "cancelled."], hold=3)
+        else:
+            print("[ADMIN] Wrong button pressed")
+            show_lines(["Unknown command.", "Try again."], hold=3)
+        show_home()
+        return
+    elif card_type == 0x03:
+        print("[ADMIN] Card is said to be single entry type.")
+        will_pay = prompt_user("Pay single entry card?", ["Yes", "No"])
+        # handle user input
+        if will_pay == 1:
+            # get price
+            # Paid. Please exit in x mins
+            try:
+                print("[ADMIN] Asking gate guard for the single entry price...")
+                e.send(GATE_GUARD_MAC, b"\x57" + uid.encode())
+            except Exception as err:
+                print(f"[ADMIN] Error checking if UID exists. {err}")
+                show_lines(["ID check failed.", "Try again."], hold=3)
+                show_home()
+                return
+            # Wait for reply
+            start = time.ticks_ms()
+            get_price_status = None
+            while time.ticks_diff(time.ticks_ms(), start) < 3000:  # 3s timeout
+                if pending_msgs:
+                    mac, msg = pending_msgs.pop(0)
+                    if msg[0] == 0x67:
+                        get_price_status = msg[1]
+                        break
+                time.sleep(0.05)
+            if get_price_status is None:
+                print("[ADMIN] No response from gate guard.")
+                show_lines(["No reply", "from database"], hold=3)
+            elif get_price_status == 0:
+                print(f"[ADMIN] Price gotten. Price - Php {int(msg[2])}")
+                prompt_user(f"Your bill is: Php {int(msg[2])}.", ["Ok"])
+                prompt_user(f"Paid. Please leave within {GRACE_MINS} mins. Surcharge after grace period.", ["Ok"])
+                show_home()
+                return
+            elif get_price_status == 1:
+                print("[ADMIN] Invalid status.")
+                status = msg[2:].decode()
+                show_lines["Invlaid", "status:", status]
+            else:
+                pass  # continue
+        else:
+            show_lines(["Pay", "cancelled."], hold=3)
+        show_home()
+        return
+    else:
+        print("[ADMIN] Unknown card type")
+        show_lines("Unknown", "card type.")
+        show_home()
+        return
 
 
 # DELETE
@@ -786,6 +975,12 @@ def recv_cb(e):
                 pending_msgs.append((mac, msg))
             elif msg[0] == 0x63:  # Guard response to for single entry registration
                 pending_msgs.append((mac, msg))
+            elif msg[0] == 0x65:  # Guard response to get card type
+                print(f"[ADMIN] Gate Guard replied card type {msg[1]}")
+                pending_msgs.append((mac, msg))
+            elif msg[0] == 0x67:  # Guard response to get card price
+                print(f"[ADMIN] Gate Guard replied card price with status {msg[1]}")
+                pending_msgs.append((mac, msg))
             elif msg[0] == 0x25:  # Guard response to UID deletion
                 pending_msgs.append((mac, msg))
             elif msg[0] == 0x26:  # Guard response to UID read
@@ -845,9 +1040,7 @@ while True:
         elif btn_id == 2:
             read_flow()
         elif btn_id == 3:
-            # Update (TODO)
-            show_lines(["Update (TODO)"], hold=3)
-            show_home()
+            update_flow()
         elif btn_id == 4:
             delete_flow()
         else:

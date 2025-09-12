@@ -24,8 +24,8 @@ MONTHLY_RATE_PHP = 5000
 DAILY_RATE_PHP = 200
 SINGLE_ENTRY_RATE_FIRST_HOURS = 40
 SINGLE_ENTRY_FIRST_HOURS_DURATION = 4
-SINGLE_ENTRY_EXTRA_HOUR_RATE = 10
-GRACE_MINS = 1
+SINGLE_ENTRY_EXTRA_HOUR_RATE = 15
+GRACE_MINS = 20
 
 # NTP
 NTP_SERVERS = ["3.pool.ntp.org", "time.nist.gov", "0.asia.pool.ntp.org", "1.asia.pool.ntp.org", "pool.ntp.org", "asia.pool.ntp.org", "europe.pool.ntp.org", "america.pool.ntp.org", "ntp.pagasa.dost.gov.ph", "time.upd.edu.ph", "us.pool.ntp.org"]
