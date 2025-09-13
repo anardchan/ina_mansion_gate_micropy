@@ -10,6 +10,7 @@ verbose_print = print if VERBOSE else lambda *a, **k: None
 # A WLAN interface must be active to send()/recv()
 sta = network.WLAN(network.STA_IF)  # Or network.AP_IF
 sta.active(True)
+sta.config(channel = 11)
 sta.disconnect() 
 
 e = espnow.ESPNow()
@@ -25,3 +26,6 @@ def pb_cb():
 
 debounced_switch = PinDebounce(pin_number=36, callback=pb_cb, debounce_time=500)
 debounced_switch.enable_irq()  # Enable IRQ for the switch
+
+mac = sta.config("mac")
+print(f"MAC Address: {':'.join("%02x" % b for b in mac)}")

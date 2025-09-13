@@ -243,6 +243,9 @@ sta.active(True)
 sta.config(channel = 11)
 sta.disconnect()
 
+mac = sta.config("mac")
+print(f"MAC Address: {':'.join("%02x" % b for b in mac)}")
+
 e = espnow.ESPNow()
 e.active(True)
 e.irq(espnow_cb)
@@ -255,3 +258,4 @@ pass_sensor.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=pass_sensor_cb
 
 lamp.off()
 debug("System initialized. State=CLOSED")
+
