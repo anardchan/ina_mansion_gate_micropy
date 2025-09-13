@@ -723,9 +723,14 @@ def update_flow():
             show_lines(["Pay", "cancelled."], hold=3)
         show_home()
         return
+    elif card_type == 0x04:
+        print("[ADMIN] Admin card type gotten")
+        prompt_user("Admin card - nothing to update", ["Ok"])
+        show_home()
+        return
     else:
         print("[ADMIN] Unknown card type")
-        show_lines("Unknown", "card type.")
+        prompt_user("Unknown card type.", ["Ok"])
         show_home()
         return
 

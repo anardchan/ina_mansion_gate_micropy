@@ -19,9 +19,9 @@ PASS_SENSOR_PIN = 34
 TICK_MS = 100
 GATE_OPEN_TIME = 15.0
 GATE1_CLOSE_TIME = 11.1
-GATE2_CLOSE_TIME = 12.3
-WAIT_BEFORE_CLOSE = 90.0
-DEBOUNCE_MS = 400
+GATE2_CLOSE_TIME = 13
+WAIT_BEFORE_CLOSE = 30.0
+DEBOUNCE_MS = 500
 
 # Convert to ticks (0.1s units)
 OPEN_TICKS = int(GATE_OPEN_TIME * 10)
@@ -87,7 +87,7 @@ last_sensor_irq = 0
 ################
 # Lamp Config  #
 ################
-LAMP_BLINK_MS = 800   # Blink interval in ms (configurable)
+LAMP_BLINK_MS = 500   # Blink interval in ms (configurable)
 lamp_tick_accum = 0   # accumulator for blinking
 
 ######################
@@ -221,14 +221,14 @@ def handle_trigger_event(src):
             wait_remaining = WAIT_TICKS
             debug("Wait timer reset due to ESP-NOW")
         elif state == STATE_CLOSING:
-            start_opening(reopen_ticks=closing_elapsed)
+            start_opening(reopen_ticks=closing_elapsed+1)
 
     elif src == "sensor_high":
         if state == STATE_WAITING:
             debug("Pass-through active: freezing timer")
             # timer frozen (no decrement while high)
         elif state == STATE_CLOSING:
-            start_opening(reopen_ticks=closing_elapsed)
+            start_opening(reopen_ticks=closing_elapsed+1)
 
     elif src == "sensor_low":
         if state == STATE_WAITING:
@@ -240,6 +240,7 @@ def handle_trigger_event(src):
 ###########################
 sta = network.WLAN(network.STA_IF)
 sta.active(True)
+sta.config(channel = 11)
 sta.disconnect()
 
 e = espnow.ESPNow()

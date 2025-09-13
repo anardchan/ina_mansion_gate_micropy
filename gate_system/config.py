@@ -10,7 +10,8 @@ READER_MACS = {
     INSIDE_READER_MAC,
     OUTSIDE_READER_MAC
 }
-TEST_BOARD_MAC = b"\xc8\x2e\x18\x51\x7e\xe8"
+# TEST_BOARD_MAC = b"\xc8\x2e\x18\x51\x7e\xe8"
+# BENINCA_HEAD_MAC = b"\xc8\x2e\x18\x51\x7e\xe8" # Test board acting as beninca head
 
 # Card Types
 class CardType:
@@ -38,5 +39,7 @@ LOG_MAX_FILES = 8  # 2 months * 4 weeks
 MAX_LOG_LINES = 500  # configurable
 
 # Wi-Fi Credentials
+# SSID = "Ina" 
+# SSID_PW = "H1b1$cu$" 
 SSID = "Converge_2.4GHz_3Fck" 
 SSID_PW = "6tYjdM8m" 

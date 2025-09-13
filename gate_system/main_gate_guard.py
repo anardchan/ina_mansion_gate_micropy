@@ -426,7 +426,7 @@ def validate_card(uid, source_mac):
 # A WLAN interface must be active to send()/recv()
 sta = network.WLAN(network.WLAN.IF_STA)  # Or network.WLAN.IF_AP
 sta.active(True)
-sta.config(channel=11)
+sta.config(channel=6)
 sta.disconnect()
 
 e = espnow.ESPNow()
@@ -616,7 +616,7 @@ def recv_cb(e):
                 uid = msg[1:].decode()
                 db = load_db()
                 uid_found = False
-                for c_type in ["monthly", "daily", "single_entry"]:
+                for c_type in ["admin", "monthly", "daily", "single_entry"]:
                     if uid in db.get(c_type):
                         if c_type == "monthly":
                             log_access("UID type: monthly. Sent to Admin.")
@@ -627,6 +627,9 @@ def recv_cb(e):
                         elif c_type == "single_entry":
                             log_access("UID type: single_entry. Sent to Admin.")
                             e.send(ADMIN_MAC, b"\x65\x03")
+                        elif c_type == "admin":
+                            log_access("UID type: single_entry. Sent to Admin.")
+                            e.send(ADMIN_MAC, b"\x65\x04")
                         uid_found = True
                         break
                 if not uid_found:
