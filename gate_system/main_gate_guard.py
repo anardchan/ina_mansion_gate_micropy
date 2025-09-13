@@ -425,7 +425,7 @@ def validate_card(uid, source_mac):
 # A WLAN interface must be active to send()/recv()
 sta = network.WLAN(network.WLAN.IF_STA)  # Or network.WLAN.IF_AP
 sta.active(True)
-sta.config(channel=6)
+sta.config(channel=10)
 sta.disconnect()
 
 e = espnow.ESPNow()
@@ -664,6 +664,7 @@ def recv_cb(e):
                 db = load_db()
                 uid = card_data["uid"]
                 db["monthly"][uid] = {
+                    "vehicle_type": card_data["vehicle_type"],
                     "activation_time": card_data["activation_time"],
                     "expiration_time": card_data["expiration_time"],
                     "io_status": "out",
@@ -688,6 +689,7 @@ def recv_cb(e):
                 db = load_db()
                 uid = card_data["uid"]
                 db["daily"][uid] = {
+                    "vehicle_type": card_data["vehicle_type"],
                     "activation_time": card_data["activation_time"],
                     "expiration_time": card_data["expiration_time"],
                     "io_status": "out",
@@ -712,6 +714,7 @@ def recv_cb(e):
                 db = load_db()
                 uid = card_data["uid"]
                 db["single_entry"][uid] = {
+                    "vehicle_type": card_data["vehicle_type"],
                     "entry_time": card_data["entry_time"],
                     "io_status": card_data["io_status"],
                     "status": card_data["status"],

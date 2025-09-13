@@ -14,7 +14,9 @@ from config import (
     UTC_OFFSET,
     GATE_GUARD_MAC,
     CAR_MONTHLY_RATE_PHP,
+    MOTOR_MONTHLY_RATE_PHP,
     CAR_DAILY_RATE_PHP,
+    MOTOR_DAILY_RATE_PHP,
     GRACE_MINS,
 )
 
@@ -208,8 +210,28 @@ def register_flow():
         show_lines(["UID already", "registered"], hold=3)
         show_home()
         return
+    
+    # Step 2: Choose vehicle type
+    user_response = None
+    vehicle_t = None
+    user_response = prompt_user(
+        "Vehicle type?", ["Car", "Motorcylce", "Cancel"]
+    )
+    if user_response == 1:
+        print("[ADMIN] Vehicle type: Car selected")
+        show_lines(["Selected:", "Car"])
+        vehicle_t = "car"
+    elif user_response == 2:
+        print("[ADMIN] Vehicle type: Motorcycle selected")
+        show_lines(["Selected:", "Motorcycle"])
+        vehicle_t = "motorcycle"
+    else:
+        print("[ADMIN] Vehicle type: Cancel selected")
+        show_lines(["Cancelled", "registration.", "Returning", "home."])
+        show_home()
+        return
 
-    # Step 2: Choose card type
+    # Step 3: Choose card type
     user_response = None
     card_registration_error = None
     user_response = prompt_user(
@@ -218,15 +240,15 @@ def register_flow():
     if user_response == 1:
         print("[ADMIN] Monthly registration selected")
         show_lines(["Selected:", "Monthly"])
-        card_registration_error = handle_card_monthly_registration(uid)
+        card_registration_error = handle_card_monthly_registration(uid, vehicle_t)
     elif user_response == 2:
         print("[ADMIN] Daily registration selected")
         show_lines(["Selected:", "Daily"])
-        card_registration_error = handle_card_daily_registration(uid)
+        card_registration_error = handle_card_daily_registration(uid, vehicle_t)
     elif user_response == 3:
         print("[ADMIN] Single-entry registration selected")
         show_lines(["Selected:", "Single entry"])
-        card_registration_error = handle_card_se_registration(uid)
+        card_registration_error = handle_card_se_registration(uid, vehicle_t)
     else:
         show_lines(["Cancelled. Returning home"])
         show_home()
@@ -252,8 +274,13 @@ def register_flow():
     return
 
 
-def handle_card_monthly_registration(uid):
-    prompt_user(f"Please pay: Php {CAR_MONTHLY_RATE_PHP} for the monthly rate.", ["Ok"])
+def handle_card_monthly_registration(uid, vehicle_type):
+    monthly_rate = 0
+    if vehicle_type == "car":
+        monthly_rate = CAR_MONTHLY_RATE_PHP
+    else: # motorcycle
+        monthly_rate = MOTOR_MONTHLY_RATE_PHP
+    prompt_user(f"Please pay: Php {monthly_rate} for the monthly rate.", ["Ok"])
     user_response = prompt_user("Have you already paid?", ["Yes", "No"])
     if user_response == 1:
         print("[ADMIN] Paid monthly.")
@@ -274,6 +301,7 @@ def handle_card_monthly_registration(uid):
     expiration = format_time(now + 30 * 24 * 3600)
     card_data = {
         "uid": uid,
+        "vehicle_type": f"{vehicle_type}",
         "activation_time": activation,
         "expiration_time": expiration,
         "io_status": "out",
@@ -311,8 +339,13 @@ def handle_card_monthly_registration(uid):
     return 0
 
 
-def handle_card_daily_registration(uid):
-    prompt_user(f"Please pay: Php {CAR_DAILY_RATE_PHP} for the daily rate.", ["Ok"])
+def handle_card_daily_registration(uid, vehicle_type):
+    daily_rate = 0
+    if vehicle_type == "car":
+        daily_rate = CAR_DAILY_RATE_PHP
+    else: # motorcycle
+        daily_rate = MOTOR_DAILY_RATE_PHP
+    prompt_user(f"Please pay: Php {daily_rate} for the daily rate.", ["Ok"])
     user_response = prompt_user("Have you already paid?", ["Yes", "No"])
     if user_response == 1:
         print("[ADMIN] Paid monthly.")
@@ -333,6 +366,7 @@ def handle_card_daily_registration(uid):
     expiration = format_time(now + 24 * 3600)
     card_data = {
         "uid": uid,
+        "vehicle_type": f"{vehicle_type}",
         "activation_time": activation,
         "expiration_time": expiration,
         "io_status": "out",
@@ -370,7 +404,7 @@ def handle_card_daily_registration(uid):
     return 0
 
 
-def handle_card_se_registration(uid):
+def handle_card_se_registration(uid, vehicle_type):
     print("[ADMIN] Single entry card registration.")
     show_lines(["Please wait..."])
 
@@ -380,6 +414,7 @@ def handle_card_se_registration(uid):
     activation = format_time(now)
     card_data = {
         "uid": uid,
+        "vehicle_type": f"{vehicle_type}",
         "entry_time": activation,
         "io_status": "out",
         "status": "new",
