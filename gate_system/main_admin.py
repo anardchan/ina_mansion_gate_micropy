@@ -13,8 +13,8 @@ from config import (
     NTP_SERVERS,
     UTC_OFFSET,
     GATE_GUARD_MAC,
-    MONTHLY_RATE_PHP,
-    DAILY_RATE_PHP,
+    CAR_MONTHLY_RATE_PHP,
+    CAR_DAILY_RATE_PHP,
     GRACE_MINS,
 )
 
@@ -253,7 +253,7 @@ def register_flow():
 
 
 def handle_card_monthly_registration(uid):
-    prompt_user(f"Please pay: Php {MONTHLY_RATE_PHP} for the monthly rate.", ["Ok"])
+    prompt_user(f"Please pay: Php {CAR_MONTHLY_RATE_PHP} for the monthly rate.", ["Ok"])
     user_response = prompt_user("Have you already paid?", ["Yes", "No"])
     if user_response == 1:
         print("[ADMIN] Paid monthly.")
@@ -312,7 +312,7 @@ def handle_card_monthly_registration(uid):
 
 
 def handle_card_daily_registration(uid):
-    prompt_user(f"Please pay: Php {DAILY_RATE_PHP} for the daily rate.", ["Ok"])
+    prompt_user(f"Please pay: Php {CAR_DAILY_RATE_PHP} for the daily rate.", ["Ok"])
     user_response = prompt_user("Have you already paid?", ["Yes", "No"])
     if user_response == 1:
         print("[ADMIN] Paid monthly.")

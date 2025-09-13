@@ -11,10 +11,9 @@ from config import (
     INSIDE_READER_MAC,
     OUTSIDE_READER_MAC,
     UTC_OFFSET,
-    DAILY_RATE_PHP,
-    SINGLE_ENTRY_RATE_FIRST_HOURS,
-    SINGLE_ENTRY_FIRST_HOURS_DURATION,
-    SINGLE_ENTRY_EXTRA_HOUR_RATE,
+    CAR_SINGLE_ENTRY_RATE_FIRST_HOURS,
+    CAR_SINGLE_ENTRY_FIRST_HOURS_DURATION,
+    CAR_SINGLE_ENTRY_EXTRA_HOUR_RATE,
     GRACE_MINS,
 )
 
@@ -189,11 +188,11 @@ def complete_single_entry(uid):
     # Ceil hours: (diff + 3599) // 3600
     duration_h = int((pay_time - entry_s + 3599) // 3600)
 
-    if duration_h <= SINGLE_ENTRY_FIRST_HOURS_DURATION:
-        price = SINGLE_ENTRY_RATE_FIRST_HOURS
+    if duration_h <= CAR_SINGLE_ENTRY_FIRST_HOURS_DURATION:
+        price = CAR_SINGLE_ENTRY_RATE_FIRST_HOURS
     else:
-        extra_h = duration_h - SINGLE_ENTRY_FIRST_HOURS_DURATION
-        price = SINGLE_ENTRY_RATE_FIRST_HOURS + extra_h * SINGLE_ENTRY_EXTRA_HOUR_RATE
+        extra_h = duration_h - CAR_SINGLE_ENTRY_FIRST_HOURS_DURATION
+        price = CAR_SINGLE_ENTRY_RATE_FIRST_HOURS + extra_h * CAR_SINGLE_ENTRY_EXTRA_HOUR_RATE
 
     card["exit_time"] = readable_now
     card["expiration_time"] = format_time(pay_time + (GRACE_MINS * 60))
