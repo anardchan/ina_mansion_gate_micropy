@@ -631,7 +631,51 @@ def update_flow():
     else:
         pass  # continue
 
-    # Step 3: Get card type
+    # Step 3: Get card vehicle type
+    try:
+        print("[ADMIN] Asking gate guard for the UID vehicle type...")
+        e.send(GATE_GUARD_MAC, b"\x59" + uid.encode())
+    except Exception as err:
+        print(f"[ADMIN] Error checking if UID exists. {err}")
+        show_lines(["ID check failed.", "Try again."], hold=3)
+        show_home()
+        return
+    
+    # Wait for reply
+    start = time.ticks_ms()
+    vehicle_type = None
+    while time.ticks_diff(time.ticks_ms(), start) < 3000:  # 3s timeout
+        if pending_msgs:
+            mac, msg = pending_msgs.pop(0)
+            if msg[0] == 0x69:  # response to UID vehicle type check
+                vehicle_type = msg[1]
+                break
+        time.sleep(0.05)
+    if vehicle_type is None:
+        print("[ADMIN] No response from gate guard.")
+        prompt_user("Admin card - nothing to update", ["Ok"])
+        show_home()
+        return
+    if vehicle_type == 0x00:  # admin card
+        print("[ADMIN] Card is an admin card.")
+        show_lines(["Nothing to", "update.", "Admin card."], hold=3)
+        show_home()
+        return
+    elif vehicle_type == 0x01:  # car card
+        print("[ADMIN] Card is an car card type.")
+        show_lines(["Car type", "card."], hold=3)
+        vehicle_type = "car"
+    elif vehicle_type == 0x02:  # motorcycle card
+        print("[ADMIN] Card is a motorcycle card type.")
+        show_lines(["Motorcyle", "type card."], hold=3)
+        vehicle_type = "motorcycle"
+    else:
+        print("[ADMIN] Unknown card vehicle type.")
+        show_lines(["Unknown", "vehicle type."], hold=3)
+        show_home()
+        return
+
+    # Step 4: Get card type
     try:
         print("[ADMIN] Asking gate guard for the UID card type...")
         e.send(GATE_GUARD_MAC, b"\x55" + uid.encode())
@@ -661,7 +705,7 @@ def update_flow():
         user_input = prompt_user("Renew monthly card?", ["Yes", "No"])
         if user_input == 1:
             print("[ADMIN] Trying to renew monthly card...")
-            renew_err = handle_card_monthly_registration(uid)
+            renew_err = handle_card_monthly_registration(uid, vehicle_type)
             if renew_err == 0:
                 show_lines(["Renew", "successful."], hold=3)
             elif renew_err == 1:
@@ -690,7 +734,7 @@ def update_flow():
         user_input = prompt_user("Renew daily card?", ["Yes", "No"])
         if user_input == 1:
             print("[ADMIN] Trying to renew daily card...")
-            renew_err = handle_card_daily_registration(uid)
+            renew_err = handle_card_daily_registration(uid, vehicle_type)
             if renew_err == 0:
                 show_lines(["Renew", "successful."], hold=3)
             elif renew_err == 1:
@@ -750,8 +794,9 @@ def update_flow():
                 return
             elif get_price_status == 1:
                 print("[ADMIN] Invalid status.")
+                status = ""
                 status = msg[2:].decode()
-                show_lines["Invlaid", "status:", status]
+                show_lines(["Invalid", "status:", f"{status}"])
             else:
                 pass  # continue
         else:
@@ -1020,6 +1065,9 @@ def recv_cb(e):
                 pending_msgs.append((mac, msg))
             elif msg[0] == 0x67:  # Guard response to get card price
                 print(f"[ADMIN] Gate Guard replied card price with status {msg[1]}")
+                pending_msgs.append((mac, msg))
+            elif msg[0] == 0x69:  # Guard response to get card price
+                print(f"[ADMIN] Gate Guard replied card vehicle type {msg[1]}")
                 pending_msgs.append((mac, msg))
             elif msg[0] == 0x25:  # Guard response to UID deletion
                 pending_msgs.append((mac, msg))
