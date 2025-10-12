@@ -18,6 +18,7 @@ from config import (
     MOTOR_SINGLE_ENTRY_RATE_FIRST_HOURS,
     MOTOR_SINGLE_ENTRY_EXTRA_HOUR_RATE,
     GRACE_MINS,
+    CHANNEL
 )
 
 # ---- FILES ----
@@ -437,7 +438,7 @@ def validate_card(uid, source_mac):
 # A WLAN interface must be active to send()/recv()
 sta = network.WLAN(network.WLAN.IF_STA)  # Or network.WLAN.IF_AP
 sta.active(True)
-sta.config(channel=6)
+sta.config(channel=CHANNEL)
 sta.disconnect()
 
 e = espnow.ESPNow()

@@ -4,7 +4,7 @@ import network
 from machine import I2C
 from mfrc522 import MFRC522
 from ssd1306 import SSD1306_I2C
-from config import GATE_GUARD_MAC, BENINCA_HEAD_MAC, RUNNER_A_MAC
+from config import GATE_GUARD_MAC, BENINCA_HEAD_MAC, RUNNER_A_MAC, CHANNEL
 
 # --- Hardware pins ---
 RST_PIN = 25
@@ -52,7 +52,7 @@ rfid = MFRC522(RST_PIN, CS_PIN)
 # --- Init ESP-NOW ---
 w0 = network.WLAN(network.STA_IF)
 w0.active(True)
-w0.config(channel = 11)
+w0.config(channel = CHANNEL)
 w0.disconnect()
 
 e = espnow.ESPNow()

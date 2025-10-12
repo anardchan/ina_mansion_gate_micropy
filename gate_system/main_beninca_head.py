@@ -2,6 +2,7 @@ import time
 import network  # type: ignore
 import espnow   # type: ignore
 from machine import Pin, Timer  # type: ignore
+from config import CHANNEL
 
 ##################
 # PIN ASSIGNMENT #
@@ -240,7 +241,7 @@ def handle_trigger_event(src):
 ###########################
 sta = network.WLAN(network.STA_IF)
 sta.active(True)
-sta.config(channel = 11)
+sta.config(channel = CHANNEL)
 sta.disconnect()
 
 mac = sta.config("mac")

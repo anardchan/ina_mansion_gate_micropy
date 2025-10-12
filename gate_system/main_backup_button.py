@@ -1,7 +1,7 @@
 import network  # type: ignore
 import espnow  # type: ignore
 
-from config import BENINCA_HEAD_MAC 
+from config import BENINCA_HEAD_MAC, CHANNEL
 from pb_debounce import PinDebounce 
 
 VERBOSE = True
@@ -10,7 +10,7 @@ verbose_print = print if VERBOSE else lambda *a, **k: None
 # A WLAN interface must be active to send()/recv()
 sta = network.WLAN(network.STA_IF)  # Or network.AP_IF
 sta.active(True)
-sta.config(channel = 11)
+sta.config(channel = CHANNEL)
 sta.disconnect() 
 
 e = espnow.ESPNow()

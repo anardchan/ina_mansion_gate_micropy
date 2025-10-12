@@ -49,7 +49,8 @@ LOG_MAX_FILES = 8  # 2 months * 4 weeks
 MAX_LOG_LINES = 500  # configurable
 
 # Wi-Fi Credentials
-# SSID = "Ina" 
+CHANNEL = 6
+SSID = "Ina" 
 # SSID_PW = "H1b1$cu$" 
 SSID = "Converge_2.4GHz_3Fck" 
 SSID_PW = "6tYjdM8m" 
