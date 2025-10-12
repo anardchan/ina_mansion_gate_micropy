@@ -14,6 +14,9 @@ from config import (
     CAR_SINGLE_ENTRY_RATE_FIRST_HOURS,
     CAR_SINGLE_ENTRY_FIRST_HOURS_DURATION,
     CAR_SINGLE_ENTRY_EXTRA_HOUR_RATE,
+    MOTOR_SINGLE_ENTRY_FIRST_HOURS_DURATION,
+    MOTOR_SINGLE_ENTRY_RATE_FIRST_HOURS,
+    MOTOR_SINGLE_ENTRY_EXTRA_HOUR_RATE,
     GRACE_MINS,
 )
 
@@ -188,11 +191,20 @@ def complete_single_entry(uid):
     # Ceil hours: (diff + 3599) // 3600
     duration_h = int((pay_time - entry_s + 3599) // 3600)
 
-    if duration_h <= CAR_SINGLE_ENTRY_FIRST_HOURS_DURATION:
-        price = CAR_SINGLE_ENTRY_RATE_FIRST_HOURS
+    if card["vehicle_type"] == "car":
+        first_hours_duration = CAR_SINGLE_ENTRY_FIRST_HOURS_DURATION
+        rate_first_hours = CAR_SINGLE_ENTRY_RATE_FIRST_HOURS
+        extra_hour_rate = CAR_SINGLE_ENTRY_EXTRA_HOUR_RATE
     else:
-        extra_h = duration_h - CAR_SINGLE_ENTRY_FIRST_HOURS_DURATION
-        price = CAR_SINGLE_ENTRY_RATE_FIRST_HOURS + extra_h * CAR_SINGLE_ENTRY_EXTRA_HOUR_RATE
+        first_hours_duration = MOTOR_SINGLE_ENTRY_FIRST_HOURS_DURATION
+        rate_first_hours = MOTOR_SINGLE_ENTRY_RATE_FIRST_HOURS
+        extra_hour_rate = MOTOR_SINGLE_ENTRY_EXTRA_HOUR_RATE
+
+    if duration_h <= first_hours_duration:
+        price = rate_first_hours
+    else:
+        extra_h = duration_h - first_hours_duration
+        price = rate_first_hours + extra_h * extra_hour_rate
 
     card["exit_time"] = readable_now
     card["expiration_time"] = format_time(pay_time + (GRACE_MINS * 60))
@@ -203,7 +215,7 @@ def complete_single_entry(uid):
         f"[BILL] UID {uid} payment recorded. Price={price}, grace until {card['expiration_time']}"
     )
     log_access(
-        f"UID {uid} payment processed — Price={price}", err_code=ERR_PAYMENT_PROCESSED
+        f"UID {uid} payment processed — Price={price}, vehicle type = {card["vehicle_type"]}", err_code=ERR_PAYMENT_PROCESSED
     )
     return price
 
@@ -425,7 +437,7 @@ def validate_card(uid, source_mac):
 # A WLAN interface must be active to send()/recv()
 sta = network.WLAN(network.WLAN.IF_STA)  # Or network.WLAN.IF_AP
 sta.active(True)
-sta.config(channel=10)
+sta.config(channel=6)
 sta.disconnect()
 
 e = espnow.ESPNow()
@@ -637,6 +649,33 @@ def recv_cb(e):
             except Exception as ex:
                 log_access("UID check type failed:", ex)
         
+        # Admin: Get vehicle type
+        elif mac == ADMIN_MAC and msg and msg[0] == 0x59:
+            try:
+                uid = msg[1:].decode()
+                db = load_db()
+                uid_found = False
+                for c_type in ["admin", "monthly", "daily", "single_entry"]:
+                    if uid in db.get(c_type):
+                        if c_type == "monthly" or c_type=="daily" or c_type=="single_entry":
+                            vehicle_t = db[c_type][uid]["vehicle_type"]
+                            if vehicle_t == "car":
+                                log_access("UID vehicle type: Car. Sent to Admin.")
+                                e.send(ADMIN_MAC, b"\x69\x01")
+                            else:
+                                log_access("UID vehicle type: Motorcycle. Sent to Admin.")
+                                e.send(ADMIN_MAC, b"\x69\x02")
+                        elif c_type == "admin":
+                            log_access("UID vehicle type: N/A (admin). Sent to Admin.")
+                            e.send(ADMIN_MAC, b"\x69\x00")
+                        uid_found = True
+                        break
+                if not uid_found:
+                    log_access("UID type: not found. Sent to Admin.")
+                    e.send(ADMIN_MAC, b"\x69\x03")
+            except Exception as ex:
+                log_access("UID check vehicle type failed:", ex)
+        
         # Admin: Get single entry price type
         elif mac == ADMIN_MAC and msg and msg[0] == 0x57:
             try:
@@ -654,7 +693,7 @@ def recv_cb(e):
                     e.send(ADMIN_MAC, b"\x67\x01"+status.encode())
                     log_access(f"Invalid UID status for payment: {status}")
             except Exception as ex:
-                log_access("Send price failed:", ex)
+                print("Send price failed:", ex)
 
         # Admin: Register monthly card
         elif mac == ADMIN_MAC and msg and msg[0] == 0x22:
