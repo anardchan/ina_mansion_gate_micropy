@@ -4,7 +4,7 @@ import network
 from machine import I2C
 from mfrc522 import MFRC522
 from ssd1306 import SSD1306_I2C
-from config import GATE_GUARD_MAC, BENINCA_HEAD_MAC
+from config import GATE_GUARD_MAC, BENINCA_HEAD_MAC, RUNNER_A_MAC
 
 # --- Hardware pins ---
 RST_PIN = 25
@@ -57,8 +57,8 @@ w0.disconnect()
 
 e = espnow.ESPNow()
 e.active(True)
-e.add_peer(GATE_GUARD_MAC)
 e.add_peer(BENINCA_HEAD_MAC)
+e.add_peer(RUNNER_A_MAC)
 
 # --- RFID helper ---
 def wait_for_card():
@@ -81,25 +81,27 @@ def main():
         uid = wait_for_card()
         show_lines(["Card detected:", uid], hold=2)
 
-        # Send request to _gate_guard
+        # Send request to _gate_guard through runner_a
         print(f"[READER] Sending access request for UID={uid}")
-        e.send(GATE_GUARD_MAC, b"\x10" + uid.encode())
+        e.send(RUNNER_A_MAC, b"\x10" + uid.encode())
         show_lines(["Checking access..."], hold=1)
 
         # Wait for reply
         mac, msg = e.irecv(5000)  # 5s timeout
         if not msg:
-            print("[READER] ❌ No response from gate_guard")
+            print("[READER] ❌ No response from runner_a")
             show_lines(["No response", "from Gate Guard"], hold=3)
             continue
 
+        # Access granted, open the gate
         if msg[0] == 0x11 and msg[1] == 0x01:
             # Access granted
             print("[READER] ✅ Access granted")
             show_lines(["Access Granted"], hold=3)
             e.send(BENINCA_HEAD_MAC, b"\x01")  # tell Beninca head
+
+        # Access denied, keep gate closed
         elif msg[0] == 0x11 and msg[1] == 0x00:
-            # Access denied
             reason = msg[2] if len(msg) > 2 else 0xFF
             reason_str = ERROR_DESCRIPTIONS.get(reason, f"0x{reason:02X}")
             print(f"[READER] ❌ Access denied, reason=0x{reason:02X}")

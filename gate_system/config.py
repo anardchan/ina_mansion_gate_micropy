@@ -5,6 +5,11 @@ INSIDE_READER_MAC = b"\x08\xa6\xf7\xbc\xe5\x48"
 BENINCA_HEAD_MAC = b'\xc8\x2e\x18\x51\xc8\x5c'
 BACKUP_BUTTON_MAC = b'\x1c\x69\x20\xce\xf7\xe4'
 OUTSIDE_READER_MAC = b"\x1c\x69\x20\xcc\xe0\x34"
+RUNNER_A_MAC = pass
+RUNNER_B_MAC = pass
+RUNNER_C_MAC = pass
+RUNNER_D_MAC = pass
+RUNNER_E_MAC = pass
 
 READER_MACS = {
     INSIDE_READER_MAC,
