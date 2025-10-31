@@ -86,8 +86,16 @@ def handle_received_data(source_mac, data):
 
     print("🧾 Data received:", data)
     print("🧭 Direction:", direction)
-    print("➡️ Next hop:", next_hop, " - ", ROLE_MAP[next_hop])
+    print("➡️ Next hop:", next_hop, " - ", ROLE_MAP.get(next_hop, "unknown") if next_hop else "None")
 
+    # --- Custom downstream fan-out for Runner A ---
+    if direction == "downstream" and MY_ROLE == "runner_a":
+        print("📡 Runner A: sending downstream to BOTH readers.")
+        for reader_mac in (config.INSIDE_READER_MAC, config.OUTSIDE_READER_MAC):
+            send_data_to(reader_mac, data)
+        return  # done — don’t continue to generic handler
+
+    # --- Default routing ---
     if next_hop:
         send_data_to(next_hop, data)
     else:
