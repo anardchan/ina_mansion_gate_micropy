@@ -1,8 +1,6 @@
-import network
+import network # type: ignore
 import config
-import espnow
-import struct
-import time
+import espnow # type: ignore
 
 # --- ROLE DEFINITIONS ---
 ROLE_MAP = {

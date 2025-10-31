@@ -1,10 +1,10 @@
 import espnow  # type: ignore
-import network
+import network  # type: ignore
 import time
 import struct
 import json
 import os
-from machine import Timer
+from machine import Timer  # type: ignore
 from config import (
     ADMIN_MAC,
     MAX_LOG_LINES,
