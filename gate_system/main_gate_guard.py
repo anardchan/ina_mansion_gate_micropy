@@ -18,7 +18,11 @@ from config import (
     MOTOR_SINGLE_ENTRY_RATE_FIRST_HOURS,
     MOTOR_SINGLE_ENTRY_EXTRA_HOUR_RATE,
     GRACE_MINS,
-    CHANNEL
+    CHANNEL,
+    RUNNER_E_MAC,
+    SSID,
+    SSID_PW,
+    NTP_SERVERS,
 )
 
 # ---- FILES ----
@@ -456,6 +460,10 @@ try:
     e.add_peer(OUTSIDE_READER_MAC)
 except Exception:
     pass
+try:
+    e.add_peer(RUNNER_E_MAC)
+except Exception:
+    pass
 
 
 def request_time_from_admin():
@@ -576,13 +584,22 @@ def recv_cb(e):
                 log_access("Bad time response from admin")
 
         # Reader access request
-        elif mac in (INSIDE_READER_MAC, OUTSIDE_READER_MAC) and msg and msg[0] == 0x10:
+        elif mac == RUNNER_E_MAC and msg and msg[0] == 0x10:
             try:
-                uid = msg[1:].decode()
+                uid = msg[2:].decode()
             except Exception:
                 uid = ""
-            print(f"[GATE GUARD] 📩 Access request from {mac}, UID={uid}")
-            approved, err = validate_card(uid, mac)
+            
+            reader = ""
+            if msg[1] == 0x0a:
+                reader = "inside reader"
+                mac_reader = INSIDE_READER_MAC
+            elif msg[1] == 0x0b:
+                reader = "outside reader"
+                mac_reader = OUTSIDE_READER_MAC
+
+            print(f"[GATE GUARD] 📩 Access request from {reader}, UID={uid}")
+            approved, err = validate_card(uid, mac_reader)
             # Approved: send 0x11 0x01
             if approved:
                 try:
