@@ -4,7 +4,7 @@ import network
 from machine import I2C
 from mfrc522 import MFRC522
 from ssd1306 import SSD1306_I2C
-from config import GATE_GUARD_MAC, BENINCA_HEAD_MAC, RUNNER_A_MAC, CHANNEL
+from config import GATE_GUARD_MAC, BENINCA_HEAD_MAC, RUNNER_A_MAC, INSIDE_READER_MAC, OUTSIDE_READER_MAC
 
 # --- Hardware pins ---
 RST_PIN = 25
@@ -55,6 +55,8 @@ w0.active(True)
 w0.config(channel = CHANNEL)
 w0.disconnect()
 
+MY_MAC = w0.config('mac')
+
 e = espnow.ESPNow()
 e.active(True)
 e.add_peer(BENINCA_HEAD_MAC)
@@ -83,11 +85,14 @@ def main():
 
         # Send request to _gate_guard through runner_a
         print(f"[READER] Sending access request for UID={uid}")
-        e.send(RUNNER_A_MAC, b"\x10" + uid.encode())
+        if MY_MAC == OUTSIDE_READER_MAC:
+            e.send(RUNNER_A_MAC, b"\x10\x0b" + uid.encode())
+        elif MY_MAC == INSIDE_READER_MAC:
+            e.send(RUNNER_A_MAC, b"\x10\x0a"+ uid.encode())
         show_lines(["Checking access..."], hold=1)
 
         # Wait for reply
-        mac, msg = e.irecv(5000)  # 5s timeout
+        mac, msg = e.irecv(6000)  # ss timeout
         if not msg:
             print("[READER] ❌ No response from runner_a")
             show_lines(["No response", "from Gate Guard"], hold=3)
