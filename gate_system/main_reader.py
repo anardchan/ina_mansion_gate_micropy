@@ -4,7 +4,7 @@ import network
 from machine import I2C
 from mfrc522 import MFRC522
 from ssd1306 import SSD1306_I2C
-from config import GATE_GUARD_MAC, BENINCA_HEAD_MAC, RUNNER_A_MAC, INSIDE_READER_MAC, OUTSIDE_READER_MAC
+from config import GATE_GUARD_MAC, BENINCA_HEAD_MAC, RUNNER_A_MAC, INSIDE_READER_MAC, OUTSIDE_READER_MAC, CHANNEL
 
 # --- Hardware pins ---
 RST_PIN = 25
