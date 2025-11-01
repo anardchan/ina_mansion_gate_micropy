@@ -98,23 +98,35 @@ def main():
             show_lines(["No response", "from Gate Guard"], hold=3)
             continue
 
-        # Access granted, open the gate
-        if msg[0] == 0x11 and msg[1] == 0x01:
-            # Access granted
-            print("[READER] ✅ Access granted")
-            show_lines(["Access Granted"], hold=3)
-            e.send(BENINCA_HEAD_MAC, b"\x01")  # tell Beninca head
+        print("🧾 Data [0] received - for whom:", hex(msg[0]))
+        print("🧾 Data [1] received - 0x11:", hex(msg[1]))
+        print("🧾 Data [2] received - approved/denied :", hex(msg[2]))
+        if msg[2] == 0x00:
+            print("🧾 Data [3] received - err :", hex(msg[3]))
 
-        # Access denied, keep gate closed
-        elif msg[0] == 0x11 and msg[1] == 0x00:
-            reason = msg[2] if len(msg) > 2 else 0xFF
-            reason_str = ERROR_DESCRIPTIONS.get(reason, f"0x{reason:02X}")
-            print(f"[READER] ❌ Access denied, reason=0x{reason:02X}")
-            print(f"[READER] ❌ Access denied, reason={reason_str}")
-            show_lines(["Access Denied", "Error", f"{reason_str}"], hold=3)
-        else:
-            print(f"[READER] ❓ Unknown response: {msg}")
-            show_lines(["Unknown response"], hold=3)
+        # Determine expected identifier based on reader type
+        expected_id = 0x0a if MY_MAC == INSIDE_READER_MAC else 0x0b
+
+        # Process message only if it matches expected reader identifier
+        if msg[0] == expected_id:
+            if msg[1] == 0x11 and msg[2] == 0x01:
+                # ✅ Access granted
+                print("[READER] ✅ Access granted")
+                show_lines(["Access Granted"], hold=3)
+                e.send(BENINCA_HEAD_MAC, b"\x01")  # trigger Beninca gate
+            elif msg[1] == 0x11 and msg[2] == 0x00:
+                # ❌ Access denied
+                reason = msg[3] if len(msg) > 2 else 0xFF
+                reason_str = ERROR_DESCRIPTIONS.get(reason, f"0x{reason:02X}")
+                print(f"[READER] ❌ Access denied, reason={reason_str}")
+                show_lines(["Access Denied", "Error", f"{reason_str}"], hold=3)
+            else:
+                print(f"[READER] ❓ Unknown response: {msg}")
+                show_lines(["Unknown response"], hold=3)
+
+        print("🧾 Clear message buffer.")
+        msg = None  
+        del msg
 
         # Delay before next scan
         time.sleep(2)
