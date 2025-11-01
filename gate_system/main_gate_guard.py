@@ -605,9 +605,11 @@ def recv_cb(e):
             reader = ""
             if msg[1] == 0x0a:
                 reader = "inside reader"
+                identifier = b"\x0a"
                 mac_reader = INSIDE_READER_MAC
             elif msg[1] == 0x0b:
                 reader = "outside reader"
+                identifier = b"\x0b"
                 mac_reader = OUTSIDE_READER_MAC
 
             print(f"[GATE GUARD] 📩 Access request from {reader}, UID={uid}")
@@ -615,14 +617,14 @@ def recv_cb(e):
             # Approved: send 0x11 0x01
             if approved:
                 try:
-                    e.send(mac, b"\x11" + b"\x01")
+                    e.send(mac, identifier + b"\x11" + b"\x01")
                 except Exception as ex:
                     print("[GATE GUARD] Failed to send approval:", ex)
                 # Debug log already created inside validate_card
             else:
                 # Denied: send 0x11 0x00 <err_code>
                 try:
-                    e.send(mac, b"\x11" + b"\x00" + bytes([err]))
+                    e.send(mac, identifier + b"\x11" + b"\x00" + bytes([err]))
                 except Exception as ex:
                     print("[GATE GUARD] Failed to send denial:", ex)
                 # Also include error description in the log (validate_card already logged)
