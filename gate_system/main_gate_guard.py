@@ -20,9 +20,9 @@ from config import (
     GRACE_MINS,
     CHANNEL,
     RUNNER_E_MAC,
-    SSID,
-    SSID_PW,
-    NTP_SERVERS,
+    # SSID,
+    # SSID_PW,
+    # NTP_SERVERS,
 )
 
 # ---- FILES ----
