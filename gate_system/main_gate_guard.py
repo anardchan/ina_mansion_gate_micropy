@@ -440,9 +440,21 @@ def validate_card(uid, source_mac):
 # ---- ESP-NOW ----
 
 # A WLAN interface must be active to send()/recv()
-sta = network.WLAN(network.WLAN.IF_STA)  # Or network.WLAN.IF_AP
+sta = network.WLAN(network.STA_IF)  # Or network.WLAN.IF_AP
 sta.active(True)
-sta.config(channel=CHANNEL)
+time.sleep_ms(200)  # <-- Give Wi-Fi hardware time to settle
+
+try:
+    sta.config(channel=CHANNEL)
+except Exception as ex:
+    print("[WARN] Failed to set Wi-Fi channel initially:", ex)
+    # Retry once after short delay
+    time.sleep_ms(500)
+    try:
+        sta.config(channel=CHANNEL)
+    except Exception as ex2:
+        print("[ERROR] Second attempt to set channel failed:", ex2)
+
 sta.disconnect()
 
 e = espnow.ESPNow()
