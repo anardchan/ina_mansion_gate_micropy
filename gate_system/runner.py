@@ -73,6 +73,9 @@ def recv_cb(e_ref):
         print(f"📥 Interrupt received from MAC: {mac}")
         if msg:
             handle_received_data(mac, msg)
+            # 🔹 Clear message from memory after handling
+            msg = None  
+            del msg
 
 # --- DATA HANDLING ---
 def handle_received_data(source_mac, data):
