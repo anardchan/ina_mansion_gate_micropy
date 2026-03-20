@@ -1,22 +1,20 @@
 # MACS
 ADMIN_MAC = b"\x1c\x69\x20\xce\xf8\xe4"
-GATE_GUARD_MAC = b'\x1c\x69\x20\xce\xfa\x24'
+GATE_GUARD_MAC = b"\x1c\x69\x20\xce\xfa\x24"
 INSIDE_READER_MAC = b"\x08\xa6\xf7\xbc\xe5\x48"
-BENINCA_HEAD_MAC = b'\xc8\x2e\x18\x51\xc8\x5c' # Actual board installed
-BACKUP_BUTTON_MAC = b'\x1c\x69\x20\xce\xf7\xe4'
+BENINCA_HEAD_MAC = b"\xc8\x2e\x18\x51\xc8\x5c"  # Actual board installed
+BACKUP_BUTTON_MAC = b"\x1c\x69\x20\xce\xf7\xe4"
 OUTSIDE_READER_MAC = b"\x1c\x69\x20\xcc\xe0\x34"
-RUNNER_A_MAC = b'\x84\x1f\xe8\x32\xe9\x00'
-RUNNER_B_MAC = b'\x88\x57\x21\x21\xae\x04'
-RUNNER_C_MAC = b'\x88\x57\x21\x21\xde\xec'
-RUNNER_D_MAC = b'\x84\x1f\xe8\x36\x70\xd4'
-RUNNER_E_MAC = b'\x84\x1f\xe8\x32\xea\x24'
+RUNNER_A_MAC = b"\x84\x1f\xe8\x32\xe9\x00"
+RUNNER_B_MAC = b"\x88\x57\x21\x21\xae\x04"
+RUNNER_C_MAC = b"\x88\x57\x21\x21\xde\xec"
+RUNNER_D_MAC = b"\x84\x1f\xe8\x36\x70\xd4"
+RUNNER_E_MAC = b"\x84\x1f\xe8\x32\xea\x24"
 
-READER_MACS = {
-    INSIDE_READER_MAC,
-    OUTSIDE_READER_MAC
-}
+READER_MACS = {INSIDE_READER_MAC, OUTSIDE_READER_MAC}
 # TEST_BOARD_MAC = b"\xc8\x2e\x18\x51\x7e\xe8"
 # BENINCA_HEAD_MAC = b"\xc8\x2e\x18\x51\x7e\xe8" # Test board acting as beninca head
+
 
 # Card Types
 class CardType:
@@ -24,6 +22,7 @@ class CardType:
     MONTHLY = 1
     DAILY = 2
     SINGLE_ENTRY = 3
+
 
 # Pricing
 CAR_MONTHLY_RATE_PHP = 5000
@@ -39,7 +38,19 @@ MOTOR_SINGLE_ENTRY_EXTRA_HOUR_RATE = 10
 GRACE_MINS = 15
 
 # NTP
-NTP_SERVERS = ["3.pool.ntp.org", "time.nist.gov", "0.asia.pool.ntp.org", "1.asia.pool.ntp.org", "pool.ntp.org", "asia.pool.ntp.org", "europe.pool.ntp.org", "america.pool.ntp.org", "ntp.pagasa.dost.gov.ph", "time.upd.edu.ph", "us.pool.ntp.org"]
+NTP_SERVERS = [
+    "3.pool.ntp.org",
+    "time.nist.gov",
+    "0.asia.pool.ntp.org",
+    "1.asia.pool.ntp.org",
+    "pool.ntp.org",
+    "asia.pool.ntp.org",
+    "europe.pool.ntp.org",
+    "america.pool.ntp.org",
+    "ntp.pagasa.dost.gov.ph",
+    "time.upd.edu.ph",
+    "us.pool.ntp.org",
+]
 UTC_OFFSET = 8 * 60 * 60  # GMT+8
 
 # Log settings

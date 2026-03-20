@@ -210,13 +210,11 @@ def register_flow():
         show_lines(["UID already", "registered"], hold=3)
         show_home()
         return
-    
+
     # Step 2: Choose vehicle type
     user_response = None
     vehicle_t = None
-    user_response = prompt_user(
-        "Vehicle type?", ["Car", "Motorcylce", "Cancel"]
-    )
+    user_response = prompt_user("Vehicle type?", ["Car", "Motorcylce", "Cancel"])
     if user_response == 1:
         print("[ADMIN] Vehicle type: Car selected")
         show_lines(["Selected:", "Car"])
@@ -278,7 +276,7 @@ def handle_card_monthly_registration(uid, vehicle_type):
     monthly_rate = 0
     if vehicle_type == "car":
         monthly_rate = CAR_MONTHLY_RATE_PHP
-    else: # motorcycle
+    else:  # motorcycle
         monthly_rate = MOTOR_MONTHLY_RATE_PHP
     prompt_user(f"Please pay: Php {monthly_rate} for the monthly rate.", ["Ok"])
     user_response = prompt_user("Have you already paid?", ["Yes", "No"])
@@ -343,7 +341,7 @@ def handle_card_daily_registration(uid, vehicle_type):
     daily_rate = 0
     if vehicle_type == "car":
         daily_rate = CAR_DAILY_RATE_PHP
-    else: # motorcycle
+    else:  # motorcycle
         daily_rate = MOTOR_DAILY_RATE_PHP
     prompt_user(f"Please pay: Php {daily_rate} for the daily rate.", ["Ok"])
     user_response = prompt_user("Have you already paid?", ["Yes", "No"])
@@ -449,6 +447,7 @@ def handle_card_se_registration(uid, vehicle_type):
         pass  # continue
 
     return 0
+
 
 # READ
 def read_flow():
@@ -597,7 +596,7 @@ def update_flow():
             show_lines(["Unknown command.", "Try again."], hold=3)
             show_home()
             return
-    
+
     # Step 1: Check if UID exists
     try:
         print("[ADMIN] Asking gate guard if UID exists in database...")
@@ -607,7 +606,7 @@ def update_flow():
         show_lines(["ID check failed.", "Try again."], hold=3)
         show_home()
         return
-    
+
     # Wait for reply
     start = time.ticks_ms()
     exists = None
@@ -640,7 +639,7 @@ def update_flow():
         show_lines(["ID check failed.", "Try again."], hold=3)
         show_home()
         return
-    
+
     # Wait for reply
     start = time.ticks_ms()
     vehicle_type = None
@@ -684,7 +683,7 @@ def update_flow():
         show_lines(["ID check failed.", "Try again."], hold=3)
         show_home()
         return
-    
+
     # Wait for reply
     start = time.ticks_ms()
     card_type = None
@@ -789,7 +788,10 @@ def update_flow():
             elif get_price_status == 0:
                 print(f"[ADMIN] Price gotten. Price - Php {int(msg[2])}")
                 prompt_user(f"Your bill is: Php {int(msg[2])}.", ["Ok"])
-                prompt_user(f"Paid. Please leave within {GRACE_MINS} mins. Surcharge after grace period.", ["Ok"])
+                prompt_user(
+                    f"Paid. Please leave within {GRACE_MINS} mins. Surcharge after grace period.",
+                    ["Ok"],
+                )
                 show_home()
                 return
             elif get_price_status == 1:

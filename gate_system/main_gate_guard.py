@@ -220,7 +220,8 @@ def complete_single_entry(uid):
         f"[BILL] UID {uid} payment recorded. Price={price}, grace until {card['expiration_time']}"
     )
     log_access(
-        f"UID {uid} payment processed — Price={price}, vehicle type = {card["vehicle_type"]}", err_code=ERR_PAYMENT_PROCESSED
+        f"UID {uid} payment processed — Price={price}, vehicle type = {card['vehicle_type']}",
+        err_code=ERR_PAYMENT_PROCESSED,
     )
     return price
 
@@ -499,18 +500,24 @@ def handle_delete_request(mac, msg):
             if uid in db.get(section, {}):
                 print(f"section: {section}")
                 if section == "single_entry":
-                    print(f"Card status : {db[section][uid]["status"]}")
-                    if db[section][uid]["status"] == "paid" or db[section][uid]["status"] == "new" or db[section][uid]["status"] == "expired" :
+                    print(f"Card status : {db[section][uid]['status']}")
+                    if (
+                        db[section][uid]["status"] == "paid"
+                        or db[section][uid]["status"] == "new"
+                        or db[section][uid]["status"] == "expired"
+                    ):
                         # Paid, can delete card if wished
                         del db[section][uid]
                         save_db(db)
                         log_access(f"[GATE_GUARD] ✅ UID {uid} deleted from {section}.")
                         e.send(mac, b"\x25\x00")  # success deletion
-                    else: 
+                    else:
                         # Not paid, cannot delete card
-                        log_access(f"[GATE_GUARD] ‼️ UID {uid} cannot be deleted from {section}. Not yet paid!")
+                        log_access(
+                            f"[GATE_GUARD] ‼️ UID {uid} cannot be deleted from {section}. Not yet paid!"
+                        )
                         e.send(mac, b"\x25\x03")  # Cannot be deleted
-                else: # monthly or daily card
+                else:  # monthly or daily card
                     del db[section][uid]
                     save_db(db)
                     log_access(f"[GATE_GUARD] ✅ UID {uid} deleted from {section}.")
@@ -601,13 +608,13 @@ def recv_cb(e):
                 uid = msg[2:].decode()
             except Exception:
                 uid = ""
-            
+
             reader = ""
-            if msg[1] == 0x0a:
+            if msg[1] == 0x0A:
                 reader = "inside reader"
                 identifier = b"\x0a"
                 mac_reader = INSIDE_READER_MAC
-            elif msg[1] == 0x0b:
+            elif msg[1] == 0x0B:
                 reader = "outside reader"
                 identifier = b"\x0b"
                 mac_reader = OUTSIDE_READER_MAC
@@ -680,7 +687,7 @@ def recv_cb(e):
                     e.send(ADMIN_MAC, b"\x65\x00")
             except Exception as ex:
                 log_access("UID check type failed:", ex)
-        
+
         # Admin: Get vehicle type
         elif mac == ADMIN_MAC and msg and msg[0] == 0x59:
             try:
@@ -689,13 +696,19 @@ def recv_cb(e):
                 uid_found = False
                 for c_type in ["admin", "monthly", "daily", "single_entry"]:
                     if uid in db.get(c_type):
-                        if c_type == "monthly" or c_type=="daily" or c_type=="single_entry":
+                        if (
+                            c_type == "monthly"
+                            or c_type == "daily"
+                            or c_type == "single_entry"
+                        ):
                             vehicle_t = db[c_type][uid]["vehicle_type"]
                             if vehicle_t == "car":
                                 log_access("UID vehicle type: Car. Sent to Admin.")
                                 e.send(ADMIN_MAC, b"\x69\x01")
                             else:
-                                log_access("UID vehicle type: Motorcycle. Sent to Admin.")
+                                log_access(
+                                    "UID vehicle type: Motorcycle. Sent to Admin."
+                                )
                                 e.send(ADMIN_MAC, b"\x69\x02")
                         elif c_type == "admin":
                             log_access("UID vehicle type: N/A (admin). Sent to Admin.")
@@ -707,7 +720,7 @@ def recv_cb(e):
                     e.send(ADMIN_MAC, b"\x69\x03")
             except Exception as ex:
                 log_access("UID check vehicle type failed:", ex)
-        
+
         # Admin: Get single entry price type
         elif mac == ADMIN_MAC and msg and msg[0] == 0x57:
             try:
@@ -719,10 +732,10 @@ def recv_cb(e):
                     # This is the payment moment: complete_single_entry sets 'paid' and grace
                     price = complete_single_entry(uid)
                     # complete_single_entry already logged payment
-                    e.send(ADMIN_MAC, b"\x67\x00"+price.to_bytes())
+                    e.send(ADMIN_MAC, b"\x67\x00" + price.to_bytes())
                     log_access(f"💰 UID price sent: Php {price}")
                 else:
-                    e.send(ADMIN_MAC, b"\x67\x01"+status.encode())
+                    e.send(ADMIN_MAC, b"\x67\x01" + status.encode())
                     log_access(f"Invalid UID status for payment: {status}")
             except Exception as ex:
                 print("Send price failed:", ex)
@@ -751,7 +764,7 @@ def recv_cb(e):
                 except:
                     pass
                 log_access("Register monthly failed", err_code=ERR_NOT_FOUND)
-        
+
         # Admin: Register daily card
         elif mac == ADMIN_MAC and msg and msg[0] == 0x52:
             try:
@@ -800,7 +813,6 @@ def recv_cb(e):
                 except:
                     pass
                 log_access("Register single entry failed", err_code=ERR_NOT_FOUND)
-
 
         elif mac == ADMIN_MAC and msg and msg[0] == 0x24:  # Delete request
             handle_delete_request(mac, msg)

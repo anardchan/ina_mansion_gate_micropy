@@ -1,6 +1,6 @@
 import time
 import network  # type: ignore
-import espnow   # type: ignore
+import espnow  # type: ignore
 from machine import Pin, Timer  # type: ignore
 from config import CHANNEL
 
@@ -29,6 +29,7 @@ OPEN_TICKS = int(GATE_OPEN_TIME * 10)
 GATE1_CLOSE_TICKS = int(GATE1_CLOSE_TIME * 10)
 GATE2_CLOSE_TICKS = int(GATE2_CLOSE_TIME * 10)
 WAIT_TICKS = int(WAIT_BEFORE_CLOSE * 10)
+
 
 ##############
 # Gate Class #
@@ -67,6 +68,7 @@ class Gate:
         time.sleep(0.1)
         self.motor_direction.value(0)
 
+
 #############
 # Globals   #
 #############
@@ -74,10 +76,10 @@ gate1 = Gate(K1_MOTOR_1, K2_MOTOR_1)
 gate2 = Gate(K4_MOTOR_2, K3_MOTOR_2)
 lamp = Pin(LAMP_PIN, Pin.OUT)
 
-STATE_CLOSED   = 0
-STATE_OPENING  = 1
-STATE_WAITING  = 2
-STATE_CLOSING  = 3
+STATE_CLOSED = 0
+STATE_OPENING = 1
+STATE_WAITING = 2
+STATE_CLOSING = 3
 
 state = STATE_CLOSED
 elapsed = 0
@@ -88,14 +90,16 @@ last_sensor_irq = 0
 ################
 # Lamp Config  #
 ################
-LAMP_BLINK_MS = 500   # Blink interval in ms (configurable)
-lamp_tick_accum = 0   # accumulator for blinking
+LAMP_BLINK_MS = 500  # Blink interval in ms (configurable)
+lamp_tick_accum = 0  # accumulator for blinking
+
 
 ######################
 # Helper Functions   #
 ######################
 def debug(msg):
     print("[DEBUG]", msg)
+
 
 def lamp_update():
     global lamp_tick_accum
@@ -111,6 +115,7 @@ def lamp_update():
     else:
         lamp.off()
         lamp_tick_accum = 0
+
 
 def start_opening(reopen_ticks=None):
     global state, elapsed, wait_remaining
@@ -128,6 +133,7 @@ def start_opening(reopen_ticks=None):
         gate1.reopen_ticks = OPEN_TICKS
         gate2.reopen_ticks = OPEN_TICKS
 
+
 def start_closing():
     global state, closing_elapsed
     state = STATE_CLOSING
@@ -136,16 +142,19 @@ def start_closing():
     gate1.move_cw()
     gate2.move_cw()
 
+
 def on_open_complete():
     global state, wait_remaining
     state = STATE_WAITING
     wait_remaining = WAIT_TICKS
     debug("Gates fully open. Starting wait timer: %d ticks" % wait_remaining)
 
+
 def on_close_complete():
     global state
     state = STATE_CLOSED
     debug("Gates fully closed")
+
 
 ############################
 # Timer Ticker (100 ms)    #
@@ -177,8 +186,10 @@ def ticker_cb(timer):
 
     lamp_update()
 
+
 ticker = Timer(0)
 ticker.init(period=TICK_MS, mode=Timer.PERIODIC, callback=ticker_cb)
+
 
 ###########################
 # IRQ Handlers            #
@@ -191,6 +202,7 @@ def espnow_cb(e):
         if msg == b"\x01":
             debug("ESP-NOW 0x1 received")
             handle_trigger_event("espnow")
+
 
 def pass_sensor_cb(pin):
     global last_sensor_irq
@@ -207,6 +219,7 @@ def pass_sensor_cb(pin):
         debug("Pass-through LOW")
         handle_trigger_event("sensor_low")
 
+
 ###########################
 # Event Handler           #
 ###########################
@@ -222,26 +235,27 @@ def handle_trigger_event(src):
             wait_remaining = WAIT_TICKS
             debug("Wait timer reset due to ESP-NOW")
         elif state == STATE_CLOSING:
-            start_opening(reopen_ticks=closing_elapsed+1)
+            start_opening(reopen_ticks=closing_elapsed + 1)
 
     elif src == "sensor_high":
         if state == STATE_WAITING:
             debug("Pass-through active: freezing timer")
             # timer frozen (no decrement while high)
         elif state == STATE_CLOSING:
-            start_opening(reopen_ticks=closing_elapsed+1)
+            start_opening(reopen_ticks=closing_elapsed + 1)
 
     elif src == "sensor_low":
         if state == STATE_WAITING:
             wait_remaining = WAIT_TICKS
             debug("Pass-through cleared: wait timer reset")
 
+
 ###########################
 # ESP-NOW Setup           #
 ###########################
 sta = network.WLAN(network.STA_IF)
 sta.active(True)
-sta.config(channel = CHANNEL)
+sta.config(channel=CHANNEL)
 sta.disconnect()
 
 mac = sta.config("mac")
@@ -259,4 +273,3 @@ pass_sensor.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=pass_sensor_cb
 
 lamp.off()
 debug("System initialized. State=CLOSED")
-

@@ -4,7 +4,13 @@ import network  # type: ignore
 from machine import I2C  # type: ignore
 from mfrc522 import MFRC522
 from ssd1306 import SSD1306_I2C
-from config import BENINCA_HEAD_MAC, RUNNER_A_MAC, INSIDE_READER_MAC, OUTSIDE_READER_MAC, CHANNEL
+from config import (
+    BENINCA_HEAD_MAC,
+    RUNNER_A_MAC,
+    INSIDE_READER_MAC,
+    OUTSIDE_READER_MAC,
+    CHANNEL,
+)
 
 # --- Hardware pins ---
 RST_PIN = 25
@@ -30,12 +36,13 @@ ERROR_DESCRIPTIONS = {
     ERR_NOT_IN_PROGRESS: "NOT_IN_PROGRESS",
     ERR_GRACE_EXPIRED: "GRACE_EXPIRED",
     ERR_PAYMENT_PROCESSED: "PAYMENT_PROCESSED",
-    ERR_UNKNOWN_READER: "ERR_UNKNOWN_READER"
+    ERR_UNKNOWN_READER: "ERR_UNKNOWN_READER",
 }
 
 # --- Init OLED (I2C0 defaults: sda=21, scl=22 on ESP32) ---
 i2c = I2C(0)
 oled = SSD1306_I2C(128, 64, i2c)
+
 
 def show_lines(lines, hold=2, clear=True):
     """Helper to show multiple lines on OLED."""
@@ -46,21 +53,23 @@ def show_lines(lines, hold=2, clear=True):
     oled.show()
     time.sleep(hold)
 
+
 # --- Init RFID reader ---
 rfid = MFRC522(RST_PIN, CS_PIN)
 
 # --- Init ESP-NOW ---
 w0 = network.WLAN(network.STA_IF)
 w0.active(True)
-w0.config(channel = CHANNEL)
+w0.config(channel=CHANNEL)
 w0.disconnect()
 
-MY_MAC = w0.config('mac')
+MY_MAC = w0.config("mac")
 
 e = espnow.ESPNow()
 e.active(True)
 e.add_peer(BENINCA_HEAD_MAC)
 e.add_peer(RUNNER_A_MAC)
+
 
 # --- RFID helper ---
 def wait_for_card():
@@ -75,6 +84,7 @@ def wait_for_card():
                 print(f"[READER] Detected card UID={uid_str}")
                 return uid_str
 
+
 # --- Main loop ---
 def main():
     while True:
@@ -88,7 +98,7 @@ def main():
         if MY_MAC == OUTSIDE_READER_MAC:
             e.send(RUNNER_A_MAC, b"\x10\x0b" + uid.encode())
         elif MY_MAC == INSIDE_READER_MAC:
-            e.send(RUNNER_A_MAC, b"\x10\x0a"+ uid.encode())
+            e.send(RUNNER_A_MAC, b"\x10\x0a" + uid.encode())
         show_lines(["Checking access..."], hold=1)
 
         # Wait for reply
@@ -105,7 +115,7 @@ def main():
             print("🧾 Data [3] received - err :", hex(msg[3]))
 
         # Determine expected identifier based on reader type
-        expected_id = 0x0a if MY_MAC == INSIDE_READER_MAC else 0x0b
+        expected_id = 0x0A if MY_MAC == INSIDE_READER_MAC else 0x0B
 
         # Process message only if it matches expected reader identifier
         if msg[0] == expected_id:
@@ -125,10 +135,11 @@ def main():
                 show_lines(["Unknown response"], hold=3)
 
         print("🧾 Clear message buffer.")
-        msg = None  
+        msg = None
         del msg
 
         # Delay before next scan
         time.sleep(2)
+
 
 main()

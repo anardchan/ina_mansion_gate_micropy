@@ -52,7 +52,7 @@ class PinDebounce:
             if time.ticks_diff(current_time, self.last_press_time) > self.debounce_time:
                 self.last_press_time = current_time
                 self.callback()  # Execute the user-defined function
-    
+
     def disable_irq(self):
         """
         Disables the IRQ for the switch to prevent further interrupts.

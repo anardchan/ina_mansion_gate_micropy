@@ -12,7 +12,7 @@ def get_mac_address():
 
     mac = sta.config("mac")
     sta.active(False)  # Deactivate the interface after getting the MAC
-    print(f"MAC Address: {':'.join("%02x" % b for b in mac)}")
+    print(f"MAC Address: {':'.join('%02x' % b for b in mac)}")
     return ":".join("%02x" % b for b in mac)
 
 

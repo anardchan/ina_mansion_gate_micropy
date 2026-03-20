@@ -1,6 +1,6 @@
-import network # type: ignore
+import network  # type: ignore
 import config
-import espnow # type: ignore
+import espnow  # type: ignore
 
 # --- ROLE DEFINITIONS ---
 ROLE_MAP = {
@@ -11,7 +11,7 @@ ROLE_MAP = {
     config.RUNNER_E_MAC: "runner_e",
     config.INSIDE_READER_MAC: "inside_reader",
     config.OUTSIDE_READER_MAC: "outside_reader",
-    config.GATE_GUARD_MAC: "gate_guard"
+    config.GATE_GUARD_MAC: "gate_guard",
 }
 
 ROUTE_ORDER = [
@@ -22,7 +22,7 @@ ROUTE_ORDER = [
     config.RUNNER_C_MAC,
     config.RUNNER_D_MAC,
     config.RUNNER_E_MAC,
-    config.GATE_GUARD_MAC
+    config.GATE_GUARD_MAC,
 ]
 
 # Global state
@@ -33,8 +33,10 @@ MY_ROLE = None
 
 # --- INIT FUNCTIONS ---
 
+
 def identify_self(mac):
     return ROLE_MAP.get(mac, "unknown")
+
 
 def get_next_hop(current_mac, direction="upstream"):
     try:
@@ -45,6 +47,7 @@ def get_next_hop(current_mac, direction="upstream"):
             return ROUTE_ORDER[idx - 1] if idx - 1 >= 0 else None
     except ValueError:
         return None
+
 
 def determine_direction(source_mac, my_mac):
     if source_mac == config.GATE_GUARD_MAC:
@@ -74,8 +77,9 @@ def recv_cb(e_ref):
         if msg:
             handle_received_data(mac, msg)
             # 🔹 Clear message from memory after handling
-            msg = None  
+            msg = None
             del msg
+
 
 # --- DATA HANDLING ---
 def handle_received_data(source_mac, data):
@@ -90,21 +94,27 @@ def handle_received_data(source_mac, data):
 
     # --- Custom downstream direction for Runner A ---
     if MY_MAC == config.RUNNER_A_MAC and direction == "downstream":
-        if data[0] == 0x0a:
+        if data[0] == 0x0A:
             print("➡️ Next hop:", config.INSIDE_READER_MAC, " - ", "inside_reader")
             send_data_to(config.INSIDE_READER_MAC, data)
             return  # done — don’t continue to generic handler
-        elif data[0] == 0x0b:
+        elif data[0] == 0x0B:
             print("➡️ Next hop:", config.OUTSIDE_READER_MAC, " - ", "outside_reader")
             send_data_to(config.OUTSIDE_READER_MAC, data)
             return  # done — don’t continue to generic handler
 
     # --- Default routing ---
-    print("➡️ Next hop:", next_hop, " - ", ROLE_MAP.get(next_hop, "unknown") if next_hop else "None")
+    print(
+        "➡️ Next hop:",
+        next_hop,
+        " - ",
+        ROLE_MAP.get(next_hop, "unknown") if next_hop else "None",
+    )
     if next_hop:
         send_data_to(next_hop, data)
     else:
         print("✅ No further forwarding needed. Processing locally.")
+
 
 def send_data_to(mac, data):
     """
@@ -124,7 +134,7 @@ w0.active(True)
 w0.config(channel=config.CHANNEL)
 w0.disconnect()
 
-MY_MAC = w0.config('mac')
+MY_MAC = w0.config("mac")
 MY_ROLE = identify_self(MY_MAC)
 
 print("🏁 Runner starting...")
