@@ -259,7 +259,7 @@ sta.config(channel=CHANNEL)
 sta.disconnect()
 
 mac = sta.config("mac")
-print(f"MAC Address: {':'.join("%02x" % b for b in mac)}")
+# print(f"MAC Address: {':'.join("%02x" % b for b in mac)}")
 
 e = espnow.ESPNow()
 e.active(True)
